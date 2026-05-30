@@ -1,0 +1,254 @@
+[
+	{
+		"cod_cbo": "225103",
+		"nome_cbo": "Médico infectologista"
+	},
+	{
+		"cod_cbo": "225105",
+		"nome_cbo": "Médico acupunturista"
+	},
+	{
+		"cod_cbo": "225106",
+		"nome_cbo": "Médico legista"
+	},
+	{
+		"cod_cbo": "225109",
+		"nome_cbo": "Médico nefrologista"
+	},
+	{
+		"cod_cbo": "225110",
+		"nome_cbo": "Médico alergista e imunologista"
+	},
+	{
+		"cod_cbo": "225112",
+		"nome_cbo": "Médico neurologista"
+	},
+	{
+		"cod_cbo": "225115",
+		"nome_cbo": "Médico angiologista"
+	},
+	{
+		"cod_cbo": "225118",
+		"nome_cbo": "Médico nutrologista"
+	},
+	{
+		"cod_cbo": "225120",
+		"nome_cbo": "Médico cardiologista"
+	},
+	{
+		"cod_cbo": "225121",
+		"nome_cbo": "Médico oncologista clínico"
+	},
+	{
+		"cod_cbo": "225122",
+		"nome_cbo": "Médico cancerologista pediátrico"
+	},
+	{
+		"cod_cbo": "225124",
+		"nome_cbo": "Médico pediatra"
+	},
+	{
+		"cod_cbo": "225125",
+		"nome_cbo": "Médico clínico"
+	},
+	{
+		"cod_cbo": "225127",
+		"nome_cbo": "Médico pneumologista"
+	},
+	{
+		"cod_cbo": "225130",
+		"nome_cbo": "Médico de família e comunidade"
+	},
+	{
+		"cod_cbo": "225133",
+		"nome_cbo": "Médico psiquiatra"
+	},
+	{
+		"cod_cbo": "225135",
+		"nome_cbo": "Médico dermatologista"
+	},
+	{
+		"cod_cbo": "225136",
+		"nome_cbo": "Médico reumatologista"
+	},
+	{
+		"cod_cbo": "225139",
+		"nome_cbo": "Médico sanitarista"
+	},
+	{
+		"cod_cbo": "225140",
+		"nome_cbo": "Médico do trabalho"
+	},
+	{
+		"cod_cbo": "225142",
+		"nome_cbo": "Médico da estratégia de saúde da família"
+	},
+	{
+		"cod_cbo": "225145",
+		"nome_cbo": "Médico em medicina de tráfego"
+	},
+	{
+		"cod_cbo": "225148",
+		"nome_cbo": "Médico anatomopatologista"
+	},
+	{
+		"cod_cbo": "225150",
+		"nome_cbo": "Médico em medicina intensiva"
+	},
+	{
+		"cod_cbo": "225151",
+		"nome_cbo": "Médico anestesiologista"
+	},
+	{
+		"cod_cbo": "225154",
+		"nome_cbo": "Médico antroposófico"
+	},
+	{
+		"cod_cbo": "225155",
+		"nome_cbo": "Médico endocrinologista e metabologista"
+	},
+	{
+		"cod_cbo": "225160",
+		"nome_cbo": "Médico fisiatra"
+	},
+	{
+		"cod_cbo": "225165",
+		"nome_cbo": "Médico gastroenterologista"
+	},
+	{
+		"cod_cbo": "225170",
+		"nome_cbo": "Médico generalista"
+	},
+	{
+		"cod_cbo": "225175",
+		"nome_cbo": "Médico geneticista"
+	},
+	{
+		"cod_cbo": "225180",
+		"nome_cbo": "Médico geriatra"
+	},
+	{
+		"cod_cbo": "225185",
+		"nome_cbo": "Médico hematologista"
+	},
+	{
+		"cod_cbo": "225195",
+		"nome_cbo": "Médico homeopata"
+	},
+	{
+		"cod_cbo": "225203",
+		"nome_cbo": "Médico em cirurgia vascular"
+	},
+	{
+		"cod_cbo": "225210",
+		"nome_cbo": "Médico cirurgião cardiovascular"
+	},
+	{
+		"cod_cbo": "225215",
+		"nome_cbo": "Médico cirurgião de cabeça e pescoço"
+	},
+	{
+		"cod_cbo": "225220",
+		"nome_cbo": "Médico cirurgião do aparelho digestivo"
+	},
+	{
+		"cod_cbo": "225225",
+		"nome_cbo": "Médico cirurgião geral"
+	},
+	{
+		"cod_cbo": "225230",
+		"nome_cbo": "Médico cirurgião pediátrico"
+	},
+	{
+		"cod_cbo": "225235",
+		"nome_cbo": "Médico cirurgião plástico"
+	},
+	{
+		"cod_cbo": "225240",
+		"nome_cbo": "Médico cirurgião torácico"
+	},
+	{
+		"cod_cbo": "225250",
+		"nome_cbo": "Médico ginecologista e obstetra"
+	},
+	{
+		"cod_cbo": "225255",
+		"nome_cbo": "Médico mastologista"
+	},
+	{
+		"cod_cbo": "225260",
+		"nome_cbo": "Médico neurocirurgião"
+	},
+	{
+		"cod_cbo": "225265",
+		"nome_cbo": "Médico oftalmologista"
+	},
+	{
+		"cod_cbo": "225270",
+		"nome_cbo": "Médico ortopedista e traumatologista"
+	},
+	{
+		"cod_cbo": "225275",
+		"nome_cbo": "Médico otorrinolaringologista"
+	},
+	{
+		"cod_cbo": "225280",
+		"nome_cbo": "Médico coloproctologista"
+	},
+	{
+		"cod_cbo": "225285",
+		"nome_cbo": "Médico urologista"
+	},
+	{
+		"cod_cbo": "225290",
+		"nome_cbo": "Médico cancerologista cirurgíco"
+	},
+	{
+		"cod_cbo": "225295",
+		"nome_cbo": "Médico cirurgião da mão"
+	},
+	{
+		"cod_cbo": "225305",
+		"nome_cbo": "Médico citopatologista"
+	},
+	{
+		"cod_cbo": "225310",
+		"nome_cbo": "Médico em endoscopia"
+	},
+	{
+		"cod_cbo": "225315",
+		"nome_cbo": "Médico em medicina nuclear"
+	},
+	{
+		"cod_cbo": "225320",
+		"nome_cbo": "Médico em radiologia e diagnóstico por imagem"
+	},
+	{
+		"cod_cbo": "225325",
+		"nome_cbo": "Médico patologista"
+	},
+	{
+		"cod_cbo": "225330",
+		"nome_cbo": "Médico radioterapeuta"
+	},
+	{
+		"cod_cbo": "225335",
+		"nome_cbo": "Médico patologista clínico / medicina laboratorial"
+	},
+	{
+		"cod_cbo": "225340",
+		"nome_cbo": "Médico hemoterapeuta"
+	},
+	{
+		"cod_cbo": "225345",
+		"nome_cbo": "Médico hiperbarista"
+	},
+	{
+		"cod_cbo": "225350",
+		"nome_cbo": "Médico neurofisiologista clínico"
+	},
+	{
+		"cod_cbo": "225355",
+		"nome_cbo": "Médico radiologista intervencionista"
+	}
+]

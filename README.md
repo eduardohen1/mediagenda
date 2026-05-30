@@ -111,11 +111,13 @@ login.php
 
 # 👨‍💻 Integrantes do Grupo
 
-- Nome Completo 1
-- Nome Completo 2
-- Nome Completo 3
-- Nome Completo 4
-- Nome Completo 5
+- Allan Luiz Filipe Oliveira – 241216821
+- André Felipe Andrade Oliveira – 251210008
+- Gabriel Henrique da Fraga Santos – 2412112804
+- Isaac Oliveira Ferreira de Sousa – 2412113877
+- Turiê Hermano de Oliveira – 2412113550
+- Vítor Hugo Moreira – 241211248
+- Walkíria Aparecida de Souza – 241210014
 
 ---
 

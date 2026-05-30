@@ -1,6 +1,10 @@
 <?php
+
+/* ============================================================
+   principal.php - Dashboard de Agendamento de Consultas Médicas
+============================================================ */
 session_start();
-require_once("conexao.php");// importar o conexao.php para esta página
+require_once("conexao.php");
 
 if(!isset($_SESSION['cod_usuario'])){
     header("Location: login.php");
@@ -11,30 +15,20 @@ $nomeUsuario = "";
 $emailUsuario = "";
 $sql = "SELECT * FROM usuario WHERE cod_usuario = '$cod_usuario'";
 
-$result = mysqli_query($conexao_bd,$sql); //pega o resultado da query e lança num array
+$pageError = '';
+$result = mysqli_query($conexao_bd,$sql); 
 
-if($consulta = mysqli_fetch_assoc($result)){ //leitura do array
+if ($result && $consulta = mysqli_fetch_assoc($result)) {
     $nomeUsuario  = $consulta['nome'];
     $emailUsuario = $consulta['email'];
+} elseif ($result === false) {
+    $pageError = mysqli_error($conexao_bd);
 }
 /* ============================================================
-   principal.php - Dashboard de Agendamento de Consultas Médicas
-   ------------------------------------------------------------
-   TODO: Adicionar validação de sessão aqui (após implementar login)
-   Ex:
-   session_start();
-   if (!isset($_SESSION['operador'])) {
-       header("Location: login.php");
-       exit;
-   }
-============================================================ */
-
-/* ============================================================
    DADOS DO OPERADOR LOGADO
-   TODO: Substituir pelos dados vindos da $_SESSION
 ============================================================ */
-$operadorNome  = $nomeUsuario; //"Dr. João Silva";
-$operadorEmail = $emailUsuario; //"joao.silva@clinica.com";
+$operadorNome  = $nomeUsuario; 
+$operadorEmail = $emailUsuario; 
 
 /* ============================================================
    DADOS DO MÊS ATUAL (cálculo do calendário)
@@ -62,15 +56,14 @@ $proximoAno = $anoAtual;
 if ($proximoMes > 12) { $proximoMes = 1; $proximoAno++; }
 
 /* ============================================================
-   AGENDAMENTOS FICTÍCIOS (placeholder para visualização)
-   REMOVER QUANDO INTEGRAR COM O BANCO DE DADOS
-   Estrutura esperada: chave = dia do mês, valor = array de agendamentos
+   AGENDAMENTOS FICTÍCIOS
 ============================================================ */
 $sql = "select *, DAY(data) diaAgenda from vw_agendamentos where MONTH(data) = $mesAtual AND YEAR(data) = $anoAtual";
 $result = mysqli_query($conexao_bd,$sql);
-while($row = $result->fetch_assoc()){
-    //echo ">>>" . $row["paciente"]." | ". $row["data"] . " | " . $row["diaAgenda"] . "<br>";
-    $agendamentosFicticios[$row["diaAgenda"]][] = [
+if ($result) {
+    while($row = mysqli_fetch_assoc($result)){
+
+        $agendamentosFicticios[$row["diaAgenda"]][] = [
         'id'            => $row["id"],
         'horario'       => date("H:i", strtotime($row["horario"])),
         'paciente'      => $row["paciente"],
@@ -79,34 +72,11 @@ while($row = $result->fetch_assoc()){
         'status'        => $row["status"]
     ];
 }
-/*
-$agendamentosFicticios = [
-    5  => [
-        ['id' => 1, 'horario' => '09:00', 'paciente' => 'Maria Souza',     'medico' => 'Dr. Carlos Lima',  'especialidade' => 'Cardiologia',  'status' => 'Confirmado'],
-    ],
-    8  => [
-        ['id' => 2, 'horario' => '10:30', 'paciente' => 'Carlos Andrade',  'medico' => 'Dra. Ana Paula',   'especialidade' => 'Dermatologia', 'status' => 'Confirmado'],
-        ['id' => 3, 'horario' => '14:00', 'paciente' => 'Juliana Reis',    'medico' => 'Dr. Pedro Alves',  'especialidade' => 'Ortopedia',    'status' => 'Pendente'],
-    ],
-    12 => [
-        ['id' => 4, 'horario' => '08:00', 'paciente' => 'Pedro Henrique',  'medico' => 'Dra. Ana Paula',   'especialidade' => 'Dermatologia', 'status' => 'Confirmado'],
-    ],
-    15 => [
-        ['id' => 5, 'horario' => '11:00', 'paciente' => 'Júlia Mendes',    'medico' => 'Dr. Carlos Lima',  'especialidade' => 'Cardiologia',  'status' => 'Confirmado'],
-        ['id' => 6, 'horario' => '15:30', 'paciente' => 'Roberto Dias',    'medico' => 'Dr. Pedro Alves',  'especialidade' => 'Ortopedia',    'status' => 'Confirmado'],
-        ['id' => 7, 'horario' => '16:30', 'paciente' => 'Fernanda Costa',  'medico' => 'Dra. Marina Reis', 'especialidade' => 'Pediatria',    'status' => 'Pendente'],
-        ['id' => 8, 'horario' => '17:30', 'paciente' => 'Lucas Silva',     'medico' => 'Dr. Carlos Lima',  'especialidade' => 'Cardiologia',  'status' => 'Confirmado'],
-    ],
-    20 => [
-        ['id' => 9, 'horario' => '09:30', 'paciente' => 'Luiz Henrique',   'medico' => 'Dra. Marina Reis', 'especialidade' => 'Pediatria',    'status' => 'Confirmado'],
-    ],
-    23 => [
-        ['id' => 10,'horario' => '10:00', 'paciente' => 'Beatriz Ramos',   'medico' => 'Dra. Ana Paula',   'especialidade' => 'Dermatologia', 'status' => 'Pendente'],
-    ],
-    27 => [
-        ['id' => 11,'horario' => '14:00', 'paciente' => 'Marcos Vinícius', 'medico' => 'Dr. Pedro Alves',  'especialidade' => 'Ortopedia',    'status' => 'Confirmado'],
-    ],
-];*/
+} else {
+    if ($pageError === '') {
+        $pageError = mysqli_error($conexao_bd);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -351,6 +321,12 @@ $agendamentosFicticios = [
         .calendario-grade .dia.vazio {
             background: #f8f9fa;
         }
+        .calendario-grade .dia.fim-semana {
+            background: #fdeaea;
+        }
+        .calendario-grade .dia.fim-semana:hover {
+            background: #f8d7da;
+        }
         .calendario-grade .dia .numero {
             font-weight: 600;
             font-size: 0.95rem;
@@ -485,7 +461,7 @@ $agendamentosFicticios = [
                 <a class="nav-link" href="cadastro_medicos.php"><i class="fa-solid fa-user-doctor"></i> Cadastro de Médicos</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#"><i class="fa-solid fa-list-check"></i> Cadastro de Especialidades</a>
+                <a class="nav-link" href="cadastro_especialidades.php"><i class="fa-solid fa-list-check"></i> Cadastro de Especialidades</a>
             </li>
         </ul>
     </aside>
@@ -529,32 +505,18 @@ $agendamentosFicticios = [
 
                 // Loop pelos dias do mês
                 for ($dia = 1; $dia <= $totalDias; $dia++) {
+
                     $classeHoje = ($dia === $diaHoje && $mesAtual === $mesHoje && $anoAtual === $anoHoje) ? 'hoje' : '';
-                    ?>
-                    <div class="dia <?php echo $classeHoje ?>">
-                        <span class="numero"><?php echo $dia ?></span>
+
+                    $diaSemana = date('w', mktime(0, 0, 0, $mesAtual, $dia, $anoAtual));
+
+                    $classeFimSemana = ($diaSemana == 0 || $diaSemana == 6) ? 'fim-semana' : '';
+                ?>
+                <div class="dia <?php echo $classeHoje . ' ' . $classeFimSemana ?>">
 
                         <?php
                         /* ============================================================
                            PONTO DE INTEGRAÇÃO COM O BANCO DE DADOS
-                           ------------------------------------------------------------
-                           TODO: Substituir o array fictício abaixo por uma consulta real.
-                           Exemplo de implementação futura:
-
-                           $agendamentosDoDia = buscarAgendamentosDoDia($dia, $mesAtual, $anoAtual);
-
-                           A função deve retornar um array no formato:
-                           [
-                               [
-                                   'id'            => int,
-                                   'horario'       => 'HH:MM',
-                                   'paciente'      => string,
-                                   'medico'        => string,
-                                   'especialidade' => string,
-                                   'status'        => string
-                               ],
-                               ...
-                           ]
                         ============================================================ */
                         $agendamentosDoDia = isset($agendamentosFicticios[$dia]) ? $agendamentosFicticios[$dia] : array();
 
@@ -654,6 +616,49 @@ $agendamentosFicticios = [
         const sidebar           = document.getElementById('sidebar');
         const conteudoPrincipal = document.getElementById('conteudoPrincipal');
         const sidebarOverlay    = document.getElementById('sidebarOverlay');
+        const urlParams         = new URLSearchParams(window.location.search);
+        const pageAlert         = urlParams.get('alert');
+        const pageAction        = urlParams.get('acao');
+        const serverErrorMessage = <?php echo json_encode($pageError); ?>;
+
+        if (serverErrorMessage) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ops, algo deu errado!',
+                text: serverErrorMessage,
+                confirmButtonText: 'Entendi'
+            });
+        } else if (pageAlert === 'success') {
+            let message = '';
+            if (pageAction === 'novo') {
+                message = 'Agendamento cadastrado com sucesso!';
+            } else if (pageAction === 'editar') {
+                message = 'Agendamento atualizado com sucesso!';
+            } else if (pageAction === 'cancelar') {
+                message = 'Agendamento cancelado com sucesso!';
+            }
+            if (message) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Tudo certo!',
+                    text: message,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2200,
+                    timerProgressBar: true
+                });
+            }
+        } else if (pageAlert === 'error') {
+            let errorMessage = urlParams.get('message') || 'Ocorreu um erro inesperado.';
+            errorMessage = decodeURIComponent(errorMessage);
+            Swal.fire({
+                icon: 'error',
+                title: 'Ops, algo deu errado!',
+                text: errorMessage,
+                confirmButtonText: 'Entendi'
+            });
+        }
 
         btnSanduiche.addEventListener('click', () => {
             if (window.innerWidth <= 991.98) {
@@ -770,10 +775,6 @@ $agendamentosFicticios = [
             });
         });
 
-        // ==================================================
-        // TODO: clique no "+ N mais" → abrir modal listando todos os agendamentos do dia
-        // (por enquanto exibe apenas um SweetAlert2 informativo)
-        // ==================================================
         document.querySelectorAll('.link-mais').forEach(function(link) {
             link.addEventListener('click', function() {
                 Swal.fire({

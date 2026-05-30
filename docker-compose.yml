@@ -49,13 +49,14 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: mediagenda
+      MYSQL_DATABASE: labdbprog2
       MYSQL_USER: mediagenda_user
       MYSQL_PASSWORD: mediagenda_pass
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d
     networks:
       - mediagenda_net
 

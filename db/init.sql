@@ -9,16 +9,16 @@ CREATE DATABASE IF NOT EXISTS labdbprog2
 
 USE labdbprog2;
 
-create table if not exists usuario (
-    cod_usuario int unsigned not null auto_increment,
-    nome varchar(150) not null,
-    email varchar(150) not null,
-    username varchar(255) not null unique,
-    pass varchar(10) not null,
-    primary key (cod_usuario)
-) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS usuario (
+    cod_usuario INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nome VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    pass VARCHAR(30) NOT NULL,
+    PRIMARY KEY (cod_usuario)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-insert into usuario (nome, email, username, pass) values
+INSERT INTO usuario (nome, email, username, pass) VALUES
     ('aluno', 'aluno@a', 'aluno', '123456'),
     ('professor', 'professor@a', 'professor', 'professor123');
 
@@ -38,13 +38,12 @@ CREATE TABLE IF NOT EXISTS especialidades (
 
 -- ============================================================
 -- TABELA: medicos
--- Cadastro de médicos, cada um vinculado a uma especialidade.
+-- Cadastro de médicos. (A especialidade foi movida para a tabela pivô)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS medicos (
     id               INT          UNSIGNED NOT NULL AUTO_INCREMENT,
     nome             VARCHAR(150) NOT NULL,
     crm              VARCHAR(20)  NOT NULL,
-    especialidade_id INT          UNSIGNED NOT NULL,
     telefone         VARCHAR(20)           DEFAULT NULL,
     email            VARCHAR(150)          DEFAULT NULL,
     status           ENUM('Ativo','Inativo') NOT NULL DEFAULT 'Ativo',
@@ -52,14 +51,25 @@ CREATE TABLE IF NOT EXISTS medicos (
     updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id),
-    UNIQUE KEY uq_medico_crm (crm),
-    KEY fk_medico_especialidade_idx (especialidade_id),
+    UNIQUE KEY uq_medico_crm (crm)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-    CONSTRAINT fk_medico_especialidade
-        FOREIGN KEY (especialidade_id)
-        REFERENCES especialidades (id)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
+-- ============================================================
+-- TABELA PIVÔ: medico_especialidades
+-- Relacionamento N:N entre Médicos e Especialidades
+-- ============================================================
+CREATE TABLE IF NOT EXISTS medico_especialidades (
+    medico_id        INT UNSIGNED NOT NULL,
+    especialidade_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (medico_id, especialidade_id),
+    
+    CONSTRAINT fk_me_medico 
+        FOREIGN KEY (medico_id) REFERENCES medicos(id) 
+        ON DELETE CASCADE ON UPDATE CASCADE,
+        
+    CONSTRAINT fk_me_especialidade 
+        FOREIGN KEY (especialidade_id) REFERENCES especialidades(id) 
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -107,18 +117,27 @@ INSERT INTO especialidades (id, nome) VALUES
     (5, 'Ortopedia'),
     (6, 'Pediatria');
 
-
 -- ============================================================
 -- DADOS INICIAIS: medicos
 -- ============================================================
-INSERT INTO medicos (id, nome, crm, especialidade_id, telefone, email, status) VALUES
-    (1, 'Dr. Carlos Lima',    'CRM/SP 12345', 1, '(11) 91234-5678', 'carlos.lima@clinica.com',    'Ativo'),
-    (2, 'Dra. Ana Paula',     'CRM/SP 23456', 2, '(11) 92345-6789', 'ana.paula@clinica.com',      'Ativo'),
-    (3, 'Dr. Pedro Alves',    'CRM/SP 34567', 5, '(11) 93456-7890', 'pedro.alves@clinica.com',    'Ativo'),
-    (4, 'Dra. Marina Reis',   'CRM/SP 45678', 6, '(11) 94567-8901', 'marina.reis@clinica.com',    'Ativo'),
-    (5, 'Dr. Ricardo Souza',  'CRM/SP 56789', 4, '(11) 95678-9012', 'ricardo.souza@clinica.com',  'Inativo'),
-    (6, 'Dra. Fernanda Melo', 'CRM/SP 67890', 3, '(11) 96789-0123', 'fernanda.melo@clinica.com',  'Ativo');
+INSERT INTO medicos (id, nome, crm, telefone, email, status) VALUES
+    (1, 'Dr. Carlos Lima',    'CRM/SP 12345', '(11) 91234-5678', 'carlos.lima@clinica.com',    'Ativo'),
+    (2, 'Dra. Ana Paula',     'CRM/SP 23456', '(11) 92345-6789', 'ana.paula@clinica.com',      'Ativo'),
+    (3, 'Dr. Pedro Alves',    'CRM/SP 34567', '(11) 93456-7890', 'pedro.alves@clinica.com',    'Ativo'),
+    (4, 'Dra. Marina Reis',   'CRM/SP 45678', '(11) 94567-8901', 'marina.reis@clinica.com',    'Ativo'),
+    (5, 'Dr. Ricardo Souza',  'CRM/SP 56789', '(11) 95678-9012', 'ricardo.souza@clinica.com',  'Inativo'),
+    (6, 'Dra. Fernanda Melo', 'CRM/SP 67890', '(11) 96789-0123', 'fernanda.melo@clinica.com',  'Ativo');
 
+-- ============================================================
+-- DADOS INICIAIS: Vínculo Médico x Especialidade
+-- ============================================================
+INSERT INTO medico_especialidades (medico_id, especialidade_id) VALUES
+    (1, 1), -- Carlos Lima: Cardiologia
+    (2, 2), -- Ana Paula: Dermatologia
+    (3, 5), -- Pedro Alves: Ortopedia
+    (4, 6), -- Marina Reis: Pediatria
+    (5, 4), -- Ricardo Souza: Neurologia
+    (6, 3); -- Fernanda Melo: Ginecologia
 
 -- ============================================================
 -- DADOS INICIAIS: agendamentos
@@ -156,17 +175,25 @@ CREATE OR REPLACE VIEW vw_agendamentos AS
     JOIN medicos       m ON m.id = a.medico_id
     JOIN especialidades e ON e.id = a.especialidade_id;
 
--- Médicos com nome da especialidade resolvido
+-- Médicos com nome da especialidade resolvido (Atualizado para N:N)
 CREATE OR REPLACE VIEW vw_medicos AS
     SELECT
         m.id,
         m.nome,
         m.crm,
-        e.nome  AS especialidade,
+        GROUP_CONCAT(e.nome SEPARATOR ', ') AS especialidades,
         m.telefone,
         m.email,
         m.status,
         m.created_at,
         m.updated_at
-    FROM medicos       m
-    JOIN especialidades e ON e.id = m.especialidade_id;
+    FROM medicos m
+    LEFT JOIN medico_especialidades me ON m.id = me.medico_id
+    LEFT JOIN especialidades e ON me.especialidade_id = e.id
+    GROUP BY m.id;
+
+-- ============================================================
+-- ALTERAÇÕES EXTRAS (Mantidas conforme o original)
+-- ============================================================
+ALTER TABLE especialidades ADD COLUMN cbo VARCHAR(20) DEFAULT NULL AFTER nome;
+ALTER TABLE especialidades ADD COLUMN data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP;
