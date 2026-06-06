@@ -1,59 +1,47 @@
 <?php
-    require_once("conexao.php");// importar o conexao.php para esta página
-    $usuario = $_POST["usuario"];
-    $senha = $_POST["senha"];
+    require_once("conexao.php");
+    $usuario = isset($_POST["usuario"]) ? trim($_POST["usuario"]) : '';
+    $senha = isset($_POST["senha"]) ? trim($_POST["senha"]) : '';
 
-    /*
-    //abrir banco de dados:
-    $host_bd = "localhost";
-    $login_bd = "root";
-    $password_bd = "";
-    $nome_bd = "labdbprog2";
-    $port = 3307;*/
-
-    //zerar as sessões:
+    // Zerar as sessões por segurança antes de tentar um novo login
     session_start();
-    $_SESSION["cod_usuario"] = "";
-    
-    //$conexao_bd = mysqli_connect($host_bd, $login_bd, $password_bd,$nome_bd, $port);
-    //$conectar = mysql_select_db($nome_bd, $conexao_bd);
+    unset($_SESSION["cod_usuario"]); 
 
-    //conferir se o usuário está preenchido
-    //conferir se a senha está preenchida
-    if(strlen($usuario) > 0 && strlen($senha) > 0){
-        $sql = "SELECT * FROM usuario WHERE username = '$usuario'";
+    if ($usuario !== '' && $senha !== '') {
         
-        $result = mysqli_query($conexao_bd,$sql); //pega o resultado da query e lança num array
-        
-        if($consulta = mysqli_fetch_assoc($result)){ //leitura do array
-            $cod_usuario = $consulta['cod_usuario'];
-            $nome        = $consulta['nome'];
-            $password    = $consulta['pass'];
+        $sql = "SELECT * FROM usuario WHERE username = ?";
+        $stmt = mysqli_prepare($conexao_bd, $sql);
+
+        if ($stmt) {
+            // "s" indica que vamos injetar uma String (texto)
+            mysqli_stmt_bind_param($stmt, "s", $usuario);
+            mysqli_stmt_execute($stmt);
             
-            if(
-                strtoupper(ltrim(rtrim($senha))) == 
-                strtoupper(ltrim(rtrim($password)))
-            ){
-                //usuário autenticado!
-                $_SESSION["cod_usuario"] = $cod_usuario;
-                header("location:principal.php");
-                //echo("Conectou!");
-            }else{
-                //usuário não autenticado
-                header("location:index.php");
-                //echo("Não conectou :(");
-            }
-        }else{
-            echo "‼ Não achei o usuário!!!";
-        }
-    }else{
-        echo "Não achei o usuário!!!";
-    }
-    //validar no banco de dados
-    //ir para página autenticada
-    //ou retornar para index
-    /*
-    echo "Cadastrar no banco o $usuario com a $senha <br>";
+            $result = mysqli_stmt_get_result($stmt);
 
-    echo "<a href='index.php'>Retornar</a>";*/
+            if ($result && $consulta = mysqli_fetch_assoc($result)) {
+                $cod_usuario = $consulta['cod_usuario'];
+                $password    = $consulta['pass'];
+
+                // Verificação do Hash da senha
+                if (password_verify($senha, $password)) {
+                    $_SESSION["cod_usuario"] = $cod_usuario;
+                    
+                    mysqli_stmt_close($stmt);
+                    mysqli_close($conexao_bd);
+                    
+                    header("Location: principal.php");
+                    exit;
+                }
+            }
+            mysqli_stmt_close($stmt);
+        }
+    }
+
+    // Se chegar até aqui (usuário em branco, senha incorreta, query falhou), bloqueia o acesso.
+    if (isset($conexao_bd)) {
+        mysqli_close($conexao_bd);
+    }
+    header("Location: login.php?erro=login");
+    exit;
 ?>

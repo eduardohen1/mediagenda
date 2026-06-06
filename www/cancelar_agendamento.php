@@ -3,19 +3,23 @@
    cancelar_agendamento.php
    Endpoint chamado via fetch() pelo principal.php para
    cancelar (status = 'Cancelado') um agendamento pelo id.
-
-   Método esperado : POST
-   Parâmetro       : id (int) — id do agendamento
-   Retorno         : JSON  { "sucesso": true }
-                        ou { "sucesso": false, "mensagem": "..." }
 ============================================================ */
+
+session_start();
 
 // Garante que a resposta será sempre JSON
 header('Content-Type: application/json; charset=utf-8');
 
 /* ============================================================
-   VALIDAÇÃO DA REQUISIÇÃO
+   VALIDAÇÃO DA REQUISIÇÃO E AUTENTICAÇÃO
 ============================================================ */
+// Bloqueia se o usuário não estiver logado
+if(!isset($_SESSION['cod_usuario'])){
+    http_response_code(401);
+    echo json_encode(array('sucesso' => false, 'mensagem' => 'Não autorizado. Faça login para continuar.'));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(array('sucesso' => false, 'mensagem' => 'Método não permitido.'));
@@ -32,62 +36,34 @@ if ($id <= 0) {
 
 /* ============================================================
    CONEXÃO COM O BANCO DE DADOS
-   TODO: Mover as credenciais para um arquivo de configuração
-         (ex: config.php) fora da pasta pública
-
-   Exemplo de config.php:
-   define('DB_HOST', 'localhost');
-   define('DB_NAME', 'mediagenda');
-   define('DB_USER', 'root');
-   define('DB_PASS', '');
 ============================================================ */
-
-// require_once '../config.php';
-
-// $conexao = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-// $conexao->set_charset('utf8mb4');
-
-// if ($conexao->connect_error) {
-//     http_response_code(500);
-//     echo json_encode(array('sucesso' => false, 'mensagem' => 'Erro de conexão com o banco.'));
-//     exit;
-// }
+require_once("conexao.php");
 
 /* ============================================================
-   CANCELAMENTO DO AGENDAMENTO
-   Utiliza exclusão lógica: atualiza o status para 'Cancelado'
-   em vez de remover o registro fisicamente da tabela.
-
-   Para exclusão física, substitua o UPDATE por:
-   $sql = 'DELETE FROM agendamentos WHERE id = ?';
+   CANCELAMENTO DO AGENDAMENTO (Exclusão Lógica + Prepared Statement)
 ============================================================ */
 
-// $sql  = "UPDATE agendamentos SET status = 'Cancelado' WHERE id = ?";
-// $stmt = $conexao->prepare($sql);
+$sql  = "UPDATE agendamentos SET status = 'Cancelado' WHERE id = ?";
+$stmt = mysqli_prepare($conexao_bd, $sql);
 
-// if (!$stmt) {
-//     http_response_code(500);
-//     echo json_encode(array('sucesso' => false, 'mensagem' => 'Erro ao preparar a query.'));
-//     $conexao->close();
-//     exit;
-// }
+if ($stmt) {
+    // "i" = integer (ID numérico)
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
 
-// $stmt->bind_param('i', $id);
-// $stmt->execute();
+    // Verifica se alguma linha foi realmente alterada no banco
+    if (mysqli_stmt_affected_rows($stmt) > 0) {
+        echo json_encode(array('sucesso' => true));
+    } else {
+        http_response_code(404);
+        echo json_encode(array('sucesso' => false, 'mensagem' => 'Agendamento não encontrado ou já estava cancelado.'));
+    }
 
-// if ($stmt->affected_rows === 0) {
-//     http_response_code(404);
-//     echo json_encode(array('sucesso' => false, 'mensagem' => 'Agendamento não encontrado.'));
-//     $stmt->close();
-//     $conexao->close();
-//     exit;
-// }
+    mysqli_stmt_close($stmt);
+} else {
+    http_response_code(500);
+    echo json_encode(array('sucesso' => false, 'mensagem' => 'Erro interno ao processar o banco de dados.'));
+}
 
-// $stmt->close();
-// $conexao->close();
-
-/* ============================================================
-   RESPOSTA DE SUCESSO
-   TODO: remover este echo após descomentar o bloco acima
-============================================================ */
-echo json_encode(array('sucesso' => true));
+mysqli_close($conexao_bd);
+?>

@@ -1,6 +1,6 @@
 # 🩺 MediAgenda
 
-Sistema web para gerenciamento e agendamento de consultas médicas desenvolvido em PHP durante as aulas de Programação Web.
+Sistema web para gerenciamento e agendamento de consultas médicas desenvolvido em PHP durante as aulas de Programação II.
 
 ---
 
@@ -8,13 +8,15 @@ Sistema web para gerenciamento e agendamento de consultas médicas desenvolvido 
 
 O **MediAgenda** é uma aplicação desenvolvida para auxiliar no gerenciamento de consultas médicas, permitindo:
 
-- 🔐 Login de usuários
-- 📅 Visualização de agenda mensal
-- 🩺 Cadastro e gerenciamento de agendamentos
+- 🔐 Login seguro com senha criptografada
+- 👤 Cadastro de usuários por código convite
+- 🛠 Administração de usuários (cadastro, edição, exclusão e filtros)
+- 👥 Controle de perfis de acesso (Administrador e Usuário)
+- 📅 Cadastro e gerenciamento de agendamentos
 - 👨‍⚕️ Cadastro de médicos
 - 🏥 Cadastro de especialidades
 - ❌ Cancelamento de consultas
-- 📊 Dashboard moderno com calendário
+- 📊 Dashboard com calendário mensal
 
 O projeto foi desenvolvido utilizando conceitos de:
 
@@ -42,8 +44,11 @@ mediagenda/
 ├── cadastro_agendas.php
 ├── cadastro_medicos.php
 ├── cadastro_especialidades.php
+├── cadastro_usuarios.php
+├── admin_usuarios.php
+├── config_usuarios.php
 ├── cancelar_agendamento.php
-├── script.sql
+├── init.sql
 └── README.md
 ```
 
@@ -56,7 +61,7 @@ O sistema utiliza MySQL/MariaDB.
 O arquivo:
 
 ```text
-script.sql
+init.sql
 ```
 
 contém:
@@ -75,7 +80,7 @@ contém:
 Execute o arquivo:
 
 ```sql
-script.sql
+init.sql
 ```
 
 no MySQL ou MariaDB.
@@ -101,27 +106,18 @@ configure:
 
 ## 3️⃣ Executar o projeto
 
-Abra o projeto em um servidor PHP e acesse:
+Abra o projeto em um servidor PHP e localhost. Você será redirecionado para:
 
 ```text
-login.php
+localhost/login.php
 ```
 
----
+Durante a criação do banco, foi incluído manualmente um usuário Administrador:
 
-# 👨‍💻 Integrantes do Grupo
-
-- Nome Completo 1
-- Nome Completo 2
-- Nome Completo 3
-- Nome Completo 4
-- Nome Completo 5
-
----
-
-# 📚 Objetivo Acadêmico
-
-Este projeto possui finalidade educacional e foi desenvolvido como atividade prática da disciplina de Programação Web.
+```text
+Login: admin
+Senha: admin123
+```
 
 ---
 
@@ -130,24 +126,47 @@ Este projeto possui finalidade educacional e foi desenvolvido como atividade pr�
 - 📱 Responsividade mobile
 - 🔔 Notificações de consultas
 - 📈 Relatórios
-- 👤 Controle de perfis de acesso
 - ☁️ Publicação em nuvem
 
 ---
 
 # 💻 Tecnologias Utilizadas
 
-| Tecnologia | Finalidade |
-|---|---|
-| PHP | Back-end |
-| MySQL/MariaDB | Banco de dados |
-| Bootstrap | Interface |
-| JavaScript | Interatividade |
-| SweetAlert2 | Alertas modernos |
-| Git/GitHub | Versionamento |
+| Tecnologia    | Finalidade       |
+| ------------- | ---------------- |
+| PHP           | Back-end         |
+| MySQL/MariaDB | Banco de dados   |
+| Bootstrap     | Interface        |
+| JavaScript    | Interatividade   |
+| SweetAlert2   | Alertas modernos |
+| Git/GitHub    | Versionamento    |
 
 ---
 
-# 📌 Observação
+# 🔒 Segurança
 
-Projeto desenvolvido para fins acadêmicos e aprendizado de desenvolvimento web com PHP e banco de dados relacional.
+O sistema possui:
+
+- autenticação de usuários por login e senha;
+- senhas armazenadas com hash seguro utilizando password_hash();
+- alteração de senha pelo próprio usuário;
+- controle de acesso por perfil (Administrador e Usuário);
+- restrição de acesso à área administrativa;
+- bloqueio de edição de agendamentos com data anterior ao dia atual.
+
+---
+
+# 👨‍💻 Integrantes do Grupo
+
+- Allan Luiz Filipe Oliveira – 241216821
+- André Felipe Andrade Oliveira – 251210008
+- Gabriel Henrique da Fraga Santos – 2412112804
+- Isaac Oliveira Ferreira de Sousa – 2412113877
+- Vítor Hugo Moreira – 241211248
+- Walkíria Aparecida de Souza – 241210014
+
+---
+
+# 📚 Objetivo Acadêmico
+
+Este projeto possui finalidade educacional e foi desenvolvido como atividade prática da disciplina de Programação II.

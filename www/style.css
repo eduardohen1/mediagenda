@@ -1,0 +1,873 @@
+/* ============================================================
+   MEDIAGENDA - ESTILOS GLOBAIS
+   Arquivo consolidado de CSS de todos os arquivos .php
+============================================================ */
+
+/* ==================== VARIÁVEIS CSS ==================== */
+:root {
+	--azul-primario: #0d6efd;
+	--azul-escuro: #084298;
+	--azul-claro: #e7f1ff;
+	--cinza-fundo: #f5f7fa;
+	--cinza-borda: #e3e6ea;
+	--texto-escuro: #1f2d3d;
+	--text-muted: #6c757d;
+	--sidebar-larg: 250px;
+	--bg-primary: #0d6efd;
+	--bg-secondary: #084298;
+	--surface: #fff;
+	--text: #1f2d3d;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background-color: var(--cinza-fundo);
+	font-family: 'Segoe UI', Tahoma, sans-serif;
+	color: var(--texto-escuro);
+	overflow-x: hidden;
+}
+
+/* ==================== NAVBAR SUPERIOR ==================== */
+.navbar-topo {
+	background: linear-gradient(90deg, var(--azul-primario) 0%, var(--azul-escuro) 100%);
+	height: 60px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 1030;
+}
+
+.navbar-topo .navbar-brand {
+	color: #fff;
+	font-weight: 600;
+	font-size: 1.25rem;
+}
+
+.navbar-topo .navbar-brand i {
+	margin-right: 8px;
+}
+
+.btn-sanduiche {
+	background: transparent;
+	border: none;
+	color: #fff;
+	font-size: 1.3rem;
+	padding: 6px 12px;
+	border-radius: 6px;
+	transition: background 0.2s;
+}
+
+.btn-sanduiche:hover {
+	background: rgba(255, 255, 255, 0.15);
+}
+
+.operador-toggle {
+	background: transparent;
+	border: none;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border-radius: 30px;
+	transition: background 0.2s;
+}
+
+.operador-toggle:hover,
+.operador-toggle:focus {
+	background: rgba(255, 255, 255, 0.15);
+	color: #fff;
+}
+
+.operador-toggle i.fa-circle-user {
+	font-size: 1.6rem;
+}
+
+.dropdown-menu-operador {
+	min-width: 220px;
+	border-radius: 10px;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+	border: none;
+}
+
+.dropdown-menu-operador .dropdown-item i {
+	width: 22px;
+	color: var(--azul-primario);
+}
+
+/* ==================== SIDEBAR LATERAL ==================== */
+.sidebar {
+	position: fixed;
+	top: 60px;
+	left: 0;
+	width: var(--sidebar-larg);
+	height: calc(100vh - 60px);
+	background: #fff;
+	border-right: 1px solid var(--cinza-borda);
+	padding: 20px 0;
+	transition: transform 0.3s ease;
+	z-index: 1020;
+	overflow-y: auto;
+}
+
+.sidebar.oculta {
+	transform: translateX(calc(var(--sidebar-larg) * -1));
+}
+
+.sidebar .nav-link {
+	color: var(--texto-escuro);
+	padding: 12px 20px;
+	border-left: 3px solid transparent;
+	transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.sidebar .nav-link i {
+	width: 22px;
+	color: var(--azul-primario);
+	font-size: 1.05rem;
+}
+
+.sidebar .nav-link:hover {
+	background: var(--azul-claro);
+	border-left-color: var(--azul-primario);
+	color: var(--azul-escuro);
+}
+
+.sidebar .nav-link.ativo {
+	background: var(--azul-claro);
+	border-left-color: var(--azul-primario);
+	color: var(--azul-escuro);
+	font-weight: 600;
+}
+
+/* Overlay (em mobile, escurece o fundo quando sidebar aberta) */
+.sidebar-overlay {
+	display: none;
+	position: fixed;
+	top: 60px;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.4);
+	z-index: 1010;
+}
+
+.sidebar-overlay.ativo {
+	display: block;
+}
+
+/* ==================== CONTEÚDO PRINCIPAL ==================== */
+.conteudo-principal {
+	margin-top: 60px;
+	margin-left: var(--sidebar-larg);
+	padding: 25px;
+	transition: margin-left 0.3s ease;
+	min-height: calc(100vh - 60px);
+}
+
+.conteudo-principal.expandido {
+	margin-left: 0;
+}
+
+@media (max-width: 991.98px) {
+	.sidebar {
+		transform: translateX(calc(var(--sidebar-larg) * -1));
+	}
+	.sidebar.aberta {
+		transform: translateX(0);
+		box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+	}
+	.conteudo-principal {
+		margin-left: 0;
+	}
+}
+
+/* ==================== CABEÇALHO DA PÁGINA ==================== */
+.page-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 22px;
+}
+
+.page-header h2 {
+	font-size: 1.4rem;
+	font-weight: 700;
+	color: var(--azul-escuro);
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.page-header h2 i {
+	color: var(--azul-primario);
+}
+
+/* ==================== CARD GENÉRICO ==================== */
+.card-pagina {
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+	border: 1px solid var(--cinza-borda);
+	padding: 20px 24px;
+	margin-bottom: 20px;
+	width: 100%;
+	max-width: 100%;
+}
+
+.card-pagina .card-titulo {
+	font-weight: 600;
+	font-size: 0.95rem;
+	color: var(--azul-escuro);
+	margin-bottom: 16px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.card-pagina .card-titulo i {
+	color: var(--azul-primario);
+}
+
+/* ==================== TABELAS ==================== */
+.tabela-medicos,
+.tabela-especialidades,
+.tabela-agendamentos {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	font-size: 0.88rem;
+}
+
+.tabela-medicos thead th,
+.tabela-especialidades thead th,
+.tabela-agendamentos thead th {
+	background: var(--azul-claro);
+	color: var(--azul-escuro);
+	font-weight: 600;
+	padding: 10px 14px;
+	border-bottom: 2px solid var(--cinza-borda);
+	white-space: nowrap;
+}
+
+.tabela-medicos tbody tr,
+.tabela-especialidades tbody tr,
+.tabela-agendamentos tbody tr {
+	transition: background 0.15s;
+}
+
+.tabela-medicos tbody tr:hover,
+.tabela-especialidades tbody tr:hover,
+.tabela-agendamentos tbody tr:hover {
+	background: #f8fbff;
+}
+
+.tabela-medicos tbody td,
+.tabela-especialidades tbody td,
+.tabela-agendamentos tbody td {
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--cinza-borda);
+	vertical-align: middle;
+}
+
+.tabela-medicos tbody tr:last-child td,
+.tabela-especialidades tbody tr:last-child td,
+.tabela-agendamentos tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.btn-icon-sm {
+	min-width: 36px;
+	padding: 0.32rem 0.5rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+}
+
+/* ============================================================
+   AJUSTE DE ALTURA SEM ALTERAR TAMANHO DA FONTE
+   Compensa a altura dos form-select-lg para igualar aos inputs grandes
+============================================================ */
+.form-select.form-select-lg,
+.form-control.form-control-lg {
+	min-height: calc(1.3em + 2rem); /* Altura base do input grande */
+}
+
+/* Restaura o tamanho da fonte ao padrão (1rem) sem alterar padding/font-size do Bootstrap */
+.form-select.form-select-lg {
+	font-size: 0.875rem; /* Valor original do Bootstrap para .form-select-lg */
+	line-height: 1.5; /* Mantém a linha compatível */
+}
+
+/* Ajuste fino de padding interno se necessário (opcional) */
+.form-select.form-select-lg {
+	padding-top: 0.375rem;
+	padding-bottom: 0.25rem;
+	padding-left: 0.75rem;
+	padding-right: 0.75rem;
+}
+
+/* ==================== BADGES DE STATUS ==================== */
+.badge-status {
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 20px;
+	font-size: 0.78rem;
+	font-weight: 600;
+}
+
+.badge-ativo {
+	background: #d1e7dd;
+	color: #0a3622;
+}
+
+.badge-inativo {
+	background: #f8d7da;
+	color: #58151c;
+}
+
+.badge-confirmado {
+	background: #d1e7dd;
+	color: #0a3622;
+}
+
+.badge-pendente {
+	background: #fff3cd;
+	color: #664d03;
+}
+
+.badge-cancelado {
+	background: #f8d7da;
+	color: #58151c;
+}
+
+.badge-status.badge-ativo {
+	background-color: #d1e7dd;
+	color: #0f5132;
+}
+
+.badge-status.badge-inativo {
+	background-color: #f8d7da;
+	color: #842029;
+}
+
+/* ==================== AVATAR DO MÉDICO ==================== */
+.avatar-medico {
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	background: var(--azul-claro);
+	color: var(--azul-primario);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 0.82rem;
+	margin-right: 8px;
+	flex-shrink: 0;
+}
+
+/* ==================== MODAL ==================== */
+.modal-form .modal-header {
+	background: var(--azul-primario);
+	color: #fff;
+}
+
+.modal-form .modal-header .btn-close {
+	filter: invert(1);
+}
+
+.modal-form label {
+	font-weight: 500;
+	font-size: 0.88rem;
+	margin-bottom: 4px;
+}
+
+.modal-form .modal-content {
+	border: none;
+	border-radius: 12px;
+	overflow: hidden;
+}
+
+.modal-form .modal-footer {
+	border-top: 1px solid #e9ecef;
+	padding: 16px 20px;
+}
+
+.modal-footer .btn {
+	padding: 0.5rem 1rem;
+	min-height: 38px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* ==================== ESPECILIDADES (MULTI-SELECT) ==================== */
+.especialidades-multi {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	min-height: 44px;
+	margin-top: 0.4rem;
+	padding: 0.42rem 0.6rem;
+	border: 1px solid #ced4da;
+	border-radius: 0.375rem;
+	background: #fff;
+}
+
+.especialidade-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.25rem 0.45rem;
+	border-radius: 999px;
+	background: #e7f1ff;
+	color: #084298;
+	font-size: 0.78rem;
+	line-height: 1.2;
+}
+
+.especialidade-tag button {
+	border: none;
+	background: transparent;
+	color: #084298;
+	cursor: pointer;
+	padding: 0;
+	line-height: 1;
+	font-size: 0.92rem;
+}
+
+.especialidades-suggestions {
+	position: absolute;
+	z-index: 1050;
+	width: 100%;
+	max-height: 220px;
+	overflow-y: auto;
+	background: #fff;
+	border: 1px solid #ced4da;
+	border-radius: 0.375rem;
+	box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+.especialidades-suggestions button {
+	width: 100%;
+	text-align: left;
+	padding: 0.55rem 0.75rem;
+	border: none;
+	background: transparent;
+	color: #212529;
+	cursor: pointer;
+}
+
+.especialidades-suggestions button:hover {
+	background: #e7f1ff;
+}
+
+.especialidades-suggestions .sem-resultado {
+	padding: 0.55rem 0.75rem;
+	color: #6c757d;
+}
+
+/* ==================== LOGIN & CADASTRO ==================== */
+.page-login {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.75rem;
+	background: linear-gradient(135deg, #eef6ff 0%, #dbe9ff 100%);
+}
+
+.login-card {
+	width: 100%;
+	max-width: 420px;
+	max-height: 80vh;
+	border: 0;
+	border-radius: 24px;
+	box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+	overflow: hidden;
+	background: var(--surface);
+	display: flex;
+	flex-direction: column;
+}
+
+.login-hero {
+	padding: 1.4rem 1.4rem;
+	background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+	color: #fff;
+	text-align: center;
+}
+
+.login-hero h1 {
+	margin-bottom: 0.4rem;
+	font-size: 1.7rem;
+	letter-spacing: 0.01em;
+}
+
+.login-hero p {
+	margin: 0;
+	opacity: 0.92;
+	font-size: 0.94rem;
+	line-height: 1.5;
+}
+
+.login-body {
+	padding: 1.2rem 1.25rem 1.4rem;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.form-control {
+	border-radius: 12px;
+	padding: 0.85rem 1rem;
+	border: 1px solid #d5dbe8;
+	background: #f8fafd;
+}
+
+.form-control:focus {
+	border-color: var(--bg-primary);
+	box-shadow: 0 0 0 0.12rem rgba(13, 110, 253, 0.16);
+}
+
+.btn-auth {
+	border-radius: 14px;
+	padding: 0.85rem 1rem;
+	font-weight: 600;
+	font-size: 0.98rem;
+}
+
+.login-footer {
+	margin-top: 1.25rem;
+	padding-bottom: 1rem;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 0.9rem;
+	line-height: 1.4;
+}
+
+.login-footer a {
+	color: var(--bg-primary);
+	text-decoration: none;
+}
+
+.login-footer a:hover {
+	text-decoration: underline;
+}
+
+.swal-mediagenda-popup {
+	border-radius: 24px !important;
+}
+
+.swal-mediagenda-button {
+	border-radius: 14px !important;
+	padding: 0.85rem 1rem !important;
+	font-weight: 600 !important;
+	font-size: 0.98rem !important;
+	background-color: #0d6efd !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+/* ==================== CONFIG USUÁRIOS - SENHA ==================== */
+.password-wrapper {
+	position: relative;
+}
+
+.password-wrapper button {
+	position: absolute;
+	right: 14px;
+	top: 50%;
+	transform: translateY(-50%);
+	border: none;
+	background: transparent;
+	color: #6c757d;
+	cursor: pointer;
+	padding: 0;
+}
+
+.barra-senha {
+	width: 100%;
+	height: 8px;
+	border-radius: 999px;
+	background: #e9ecef;
+	overflow: hidden;
+	margin-top: 8px;
+}
+
+.forca-senha {
+	height: 100%;
+	width: 0%;
+	border-radius: 999px;
+	transition: 0.25s;
+}
+
+.toggle-password-btn:focus,
+.toggle-password-btn:focus-visible {
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+/* ==================== CALENDÁRIO ==================== */
+.card-calendario {
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+	border: 1px solid var(--cinza-borda);
+	overflow: hidden;
+}
+
+.calendario-cabecalho {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 18px 22px;
+	border-bottom: 1px solid var(--cinza-borda);
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.calendario-cabecalho h4 {
+	margin: 0;
+	color: var(--azul-escuro);
+	font-weight: 600;
+	text-transform: capitalize;
+}
+
+.calendario-cabecalho .btn-nav {
+	border: 1px solid var(--cinza-borda);
+	background: #fff;
+	color: var(--texto-escuro);
+	padding: 6px 12px;
+	border-radius: 6px;
+	transition: all 0.2s;
+}
+
+.calendario-cabecalho .btn-nav:hover {
+	background: var(--azul-claro);
+	color: var(--azul-primario);
+	border-color: var(--azul-primario);
+}
+
+.calendario-grade {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	background: var(--cinza-borda);
+	gap: 1px;
+}
+
+.calendario-grade .dia-semana {
+	background: #fafbfc;
+	text-align: center;
+	padding: 10px 4px;
+	font-weight: 600;
+	font-size: 0.85rem;
+	color: #6c757d;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.calendario-grade .dia {
+	background: #fff;
+	min-height: 145px;
+	padding: 8px;
+	position: relative;
+	transition: background 0.15s;
+	display: flex;
+	flex-direction: column;
+	padding-top: 30px;
+}
+
+.numero-dia {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 24px;
+	background: #becee4;
+	color: #fff;
+	font-size: 1rem;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.dia:hover .numero-dia {
+	background: var(--azul-primario);
+	transition:
+		background 0.2s ease,
+		transform 0.2s ease;
+}
+
+.calendario-grade .dia:hover {
+	background: #f3f9ff;
+}
+
+.calendario-grade .dia.vazio {
+	background: #f8f9fa;
+}
+
+.calendario-grade .dia.fim-semana {
+	background: #fff6f6;
+}
+
+.calendario-grade .dia.fim-semana:hover {
+	background: #f8d7da;
+}
+
+.calendario-grade .dia .numero {
+	font-weight: 600;
+	font-size: 0.95rem;
+	color: var(--texto-escuro);
+	margin-bottom: 4px;
+}
+
+.calendario-grade .dia.hoje .numero {
+	background: var(--azul-primario);
+	color: #fff;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* Card de agendamento dentro do dia */
+.card-agendamento {
+	background: var(--azul-claro);
+	border-left: 3px solid var(--azul-primario);
+	border-radius: 4px;
+	padding: 4px 6px;
+	margin-bottom: 3px;
+	font-size: 0.75rem;
+	cursor: pointer;
+	transition: all 0.15s;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.card-agendamento:hover {
+	background: var(--azul-primario);
+	color: #fff;
+	transform: translateX(2px);
+}
+
+.card-agendamento .horario {
+	font-weight: 600;
+}
+
+.card-agendamento .paciente {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.link-mais {
+	font-size: 0.72rem;
+	color: var(--azul-primario);
+	cursor: pointer;
+	font-weight: 600;
+	margin-top: 2px;
+}
+
+.link-mais:hover {
+	text-decoration: underline;
+}
+
+/* ==================== MODAL DETALHE ==================== */
+.modal-detalhe .modal-header {
+	background: var(--azul-primario);
+	color: #fff;
+}
+
+.modal-detalhe .modal-header .btn-close {
+	filter: invert(1);
+}
+
+.modal-detalhe .info-item {
+	padding: 10px 0;
+	border-bottom: 1px solid var(--cinza-borda);
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.modal-detalhe .info-item:last-child {
+	border-bottom: none;
+}
+
+.modal-detalhe .info-item i {
+	color: var(--azul-primario);
+	width: 22px;
+	font-size: 1.05rem;
+}
+
+.modal-detalhe .info-item strong {
+	color: #6c757d;
+	font-weight: 500;
+	margin-right: 8px;
+}
+
+/* ==================== RESPONSIVO ==================== */
+@media (max-width: 768px) {
+	.page-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.btn-auth {
+		border-radius: 14px;
+		padding: 0.85rem 1rem;
+		font-weight: 600;
+	}
+
+	.calendario-grade .dia {
+		min-height: 100px;
+	}
+
+	.card-pagina {
+		padding: 15px 16px;
+	}
+
+	.tabela-medicos,
+	.tabela-especialidades,
+	.tabela-agendamentos {
+		font-size: 0.75rem;
+	}
+}
+
+/* Pendente = laranja/amarelo */
+.card-agendamento.card-pendente {
+	background: #fff3cd;
+	color: var(--texto-escuro);
+}
+
+/* Cancelado = vermelho */
+.card-agendamento.card-cancelado {
+	background: #f8d7da;
+	color: var(--texto-escuro);
+}

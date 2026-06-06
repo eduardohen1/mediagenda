@@ -1,109 +1,394 @@
 <?php
-/* ============================================================
-   cadastro_medicos.php - Cadastro de Médicos
-   ------------------------------------------------------------
-   TODO: Adicionar validação de sessão aqui (após implementar login)
-   Ex:
-   session_start();
-   if (!isset($_SESSION['operador'])) {
-       header("Location: login.php");
-       exit;
-   }
-============================================================ */
+require_once("conexao.php"); // importar o conexao.php para esta página
+
+session_start();
+if (!isset($_SESSION['cod_usuario'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$cod_usuario = intval($_SESSION['cod_usuario']);
+$nomeUsuario = "";
+$emailUsuario = "";
+$perfilUsuario = "";
+$pageError = '';
 
 /* ============================================================
-   DADOS DO OPERADOR LOGADO
-   TODO: Substituir pelos dados vindos da $_SESSION
+   PREPARED STATEMENT: Sessão do Usuário
 ============================================================ */
-$operadorNome  = "Dr. João Silva";
-$operadorEmail = "joao.silva@clinica.com";
+$sql = "SELECT * FROM usuario WHERE cod_usuario = ?";
+$stmt = mysqli_prepare($conexao_bd, $sql);
+
+if ($stmt) {
+    mysqli_stmt_bind_param($stmt, "i", $cod_usuario);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    if ($result && $consulta = mysqli_fetch_assoc($result)) {
+        $nomeUsuario  = $consulta['nome'];
+        $emailUsuario = $consulta['email'];
+        $perfilUsuario = $consulta["perfil"];
+    } elseif ($result === false) {
+        $pageError = mysqli_error($conexao_bd);
+    }
+    mysqli_stmt_close($stmt);
+}
+
+/* ============================================================
+   cadastro_medicos.php - Cadastro de Médicos
+============================================================ */
+$operadorNome  = $nomeUsuario;
+$operadorEmail = $emailUsuario;
 
 /* ============================================================
    PROCESSAMENTO DE AÇÕES (POST)
-   TODO: Implementar as ações ao integrar com o banco de dados
-
-   Estrutura esperada para receber via $_POST:
-   - acao           : 'novo' | 'editar' | 'excluir'
-   - id             : int    (apenas para editar/excluir)
-   - nome           : string
-   - crm            : string
-   - especialidade  : string
-   - telefone       : string
-   - email          : string
-   - status         : 'Ativo' | 'Inativo'
-
-   Exemplo futuro:
-   if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-       $acao = isset($_POST['acao']) ? $_POST['acao'] : '';
-       if ($acao === 'novo') {
-           // INSERT INTO medicos (nome, crm, especialidade, telefone, email, status)
-           //                     VALUES (?, ?, ?, ?, ?, ?)
-       } elseif ($acao === 'editar') {
-           // UPDATE medicos SET nome=?, crm=?, especialidade=?, telefone=?, email=?, status=?
-           //              WHERE id = ?
-       } elseif ($acao === 'excluir') {
-           // DELETE FROM medicos WHERE id = ?
-           // OU UPDATE medicos SET status = 'Inativo' WHERE id = ? (exclusão lógica)
-       }
-       header("Location: cadastro_medicos.php");
-       exit;
-   }
+   Integração com o banco de dados para criar, editar e excluir médicos
 ============================================================ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $acao = isset($_POST['acao']) ? trim($_POST['acao']) : '';
+    $acao = strtolower($acao);
+    $redirect = 'cadastro_medicos.php';
+
+    try {
+        if ($acao === 'novo' || $acao === 'editar') {
+            $nome             = trim($_POST['nome'] ?? '');
+            $crm              = trim($_POST['crm'] ?? '');
+            $telefone         = trim($_POST['telefone'] ?? '');
+            $email            = trim($_POST['email'] ?? '');
+            $status           = isset($_POST['status']) && $_POST['status'] === 'Inativo' ? 'Inativo' : 'Ativo';
+            
+            // --- CAPTURA DE ESPECIALIDADES (ARRAY) ---
+            $especialidades   = isset($_POST['especialidades']) ? $_POST['especialidades'] : [];
+
+            if ($nome === '') {
+                throw new Exception('Nome do médico é obrigatório.');
+            }
+            if ($crm === '') {
+                throw new Exception('CRM do médico é obrigatório.');
+            }
+            if (empty($especialidades)) {
+                throw new Exception('Selecione pelo menos uma especialidade.');
+            }
+
+            if ($acao === 'novo') {
+                /* ============================================================
+                   INSERT: Novo Médico e Tabela Pivô
+                ============================================================ */
+                $sql = "INSERT INTO medicos (nome, crm, telefone, email, status) VALUES (?, ?, ?, ?, ?)";
+                $stmtInsert = mysqli_prepare($conexao_bd, $sql);
+                
+                if (!$stmtInsert) {
+                    throw new Exception('Erro ao preparar query de inserção.');
+                }
+
+                mysqli_stmt_bind_param($stmtInsert, "sssss", $nome, $crm, $telefone, $email, $status);
+                if (!mysqli_stmt_execute($stmtInsert)) {
+                    throw new Exception('Não foi possível cadastrar o médico. ' . mysqli_error($conexao_bd));
+                }
+                
+                $novoMedicoId = mysqli_insert_id($conexao_bd);
+                mysqli_stmt_close($stmtInsert);
+                
+                // --- INSERT NA TABELA PIVÔ ---
+                $sqlPivo = "INSERT INTO medico_especialidades (medico_id, especialidade_id) VALUES (?, ?)";
+                $stmtPivo = mysqli_prepare($conexao_bd, $sqlPivo);
+                
+                if ($stmtPivo) {
+                    foreach ($especialidades as $espId) {
+                        $espIdInt = intval($espId);
+                        mysqli_stmt_bind_param($stmtPivo, "ii", $novoMedicoId, $espIdInt);
+                        mysqli_stmt_execute($stmtPivo);
+                    }
+                    mysqli_stmt_close($stmtPivo);
+                }
+                
+                $redirect .= '?alert=success&acao=novo';
+                
+            } elseif ($acao === 'editar') {
+                $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+                if ($id <= 0) {
+                    throw new Exception('Médico inválido para edição.');
+                }
+                if ($status === 'Inativo') {
+                    /* ============================================================
+                       SELECT: Checar agendamentos futuros
+                    ============================================================ */
+                    $sqlCount = "SELECT COUNT(*) AS total FROM agendamentos WHERE medico_id = ? AND data >= CURDATE()";
+                    $stmtCount = mysqli_prepare($conexao_bd, $sqlCount);
+                    if ($stmtCount) {
+                        mysqli_stmt_bind_param($stmtCount, "i", $id);
+                        mysqli_stmt_execute($stmtCount);
+                        $resultCount = mysqli_stmt_get_result($stmtCount);
+                        if ($resultCount) {
+                            $rowCount = mysqli_fetch_assoc($resultCount);
+                            if (intval($rowCount['total']) > 0) {
+                                throw new Exception('Não é possível inativar este médico enquanto houver agendamentos futuros.');
+                            }
+                        }
+                        mysqli_stmt_close($stmtCount);
+                    } else {
+                        throw new Exception('Não foi possível verificar agendamentos futuros.');
+                    }
+                }
+
+                /* ============================================================
+                VALIDAÇÃO: NÃO PERMITE REMOVER ESPECIALIDADE COM
+                AGENDAMENTOS FUTUROS VINCULADOS
+                ============================================================ */
+
+                // Especialidades atuais do médico
+                $especialidadesAtuais = [];
+
+                $sqlEspAtuais = "
+                    SELECT especialidade_id
+                    FROM medico_especialidades
+                    WHERE medico_id = ?
+                ";
+
+                $stmtEspAtuais = mysqli_prepare($conexao_bd, $sqlEspAtuais);
+
+                if ($stmtEspAtuais) {
+
+                    mysqli_stmt_bind_param($stmtEspAtuais, "i", $id);
+                    mysqli_stmt_execute($stmtEspAtuais);
+
+                    $resEspAtuais = mysqli_stmt_get_result($stmtEspAtuais);
+
+                    while ($rowEsp = mysqli_fetch_assoc($resEspAtuais)) {
+                        $especialidadesAtuais[] = intval($rowEsp['especialidade_id']);
+                    }
+
+                    mysqli_stmt_close($stmtEspAtuais);
+                }
+
+                // Descobre quais especialidades estão sendo removidas
+                $especialidadesNovas = array_map('intval', $especialidades);
+
+                $especialidadesRemovidas = array_diff(
+                    $especialidadesAtuais,
+                    $especialidadesNovas
+                );
+
+                // Para cada especialidade removida, verifica agendamentos futuros
+                foreach ($especialidadesRemovidas as $especialidadeRemovida) {
+
+                    $sqlAgendamento = "
+                        SELECT
+                            e.nome AS especialidade
+                        FROM agendamentos a
+                        INNER JOIN especialidades e
+                            ON e.id = a.especialidade_id
+                        WHERE a.medico_id = ?
+                        AND a.especialidade_id = ?
+                        AND a.data >= CURDATE()
+                        AND a.status <> 'Cancelado'
+                        LIMIT 1
+                    ";
+
+                    $stmtAgendamento = mysqli_prepare(
+                        $conexao_bd,
+                        $sqlAgendamento
+                    );
+
+                    if ($stmtAgendamento) {
+
+                        mysqli_stmt_bind_param(
+                            $stmtAgendamento,
+                            "ii",
+                            $id,
+                            $especialidadeRemovida
+                        );
+
+                        mysqli_stmt_execute($stmtAgendamento);
+
+                        $resAgendamento = mysqli_stmt_get_result(
+                            $stmtAgendamento
+                        );
+
+                        if (
+                            $resAgendamento &&
+                            $rowAgendamento = mysqli_fetch_assoc($resAgendamento)
+                        ) {
+
+                            mysqli_stmt_close($stmtAgendamento);
+
+                            throw new Exception(
+                                'Não é possível remover a especialidade "' .
+                                $rowAgendamento['especialidade'] .
+                                '". Existem agendamentos futuros vinculados a ela.'
+                            );
+                        }
+
+                        mysqli_stmt_close($stmtAgendamento);
+                    }
+                }
+                
+                /* ============================================================
+                   UPDATE: Edição do Médico
+                ============================================================ */
+                $sql = "UPDATE medicos SET nome = ?, crm = ?, telefone = ?, email = ?, status = ? WHERE id = ?";
+                $stmtUpdate = mysqli_prepare($conexao_bd, $sql);
+                
+                if (!$stmtUpdate) {
+                    throw new Exception('Erro ao preparar query de atualização.');
+                }
+
+                mysqli_stmt_bind_param($stmtUpdate, "sssssi", $nome, $crm, $telefone, $email, $status, $id);
+                if (!mysqli_stmt_execute($stmtUpdate)) {
+                    throw new Exception('Não foi possível atualizar o médico. ' . mysqli_error($conexao_bd));
+                }
+                mysqli_stmt_close($stmtUpdate);
+
+                // --- ATUALIZAÇÃO DA TABELA PIVÔ ---
+                // 1. Deleta os antigos
+                $sqlDelPivo = "DELETE FROM medico_especialidades WHERE medico_id = ?";
+                $stmtDel = mysqli_prepare($conexao_bd, $sqlDelPivo);
+                if ($stmtDel) {
+                    mysqli_stmt_bind_param($stmtDel, "i", $id);
+                    mysqli_stmt_execute($stmtDel);
+                    mysqli_stmt_close($stmtDel);
+                }
+
+                // 2. Insere os novos
+                $sqlInsPivo = "INSERT INTO medico_especialidades (medico_id, especialidade_id) VALUES (?, ?)";
+                $stmtIns = mysqli_prepare($conexao_bd, $sqlInsPivo);
+                if ($stmtIns) {
+                    foreach ($especialidades as $espId) {
+                        $espIdInt = intval($espId);
+                        mysqli_stmt_bind_param($stmtIns, "ii", $id, $espIdInt);
+                        mysqli_stmt_execute($stmtIns);
+                    }
+                    mysqli_stmt_close($stmtIns);
+                }
+
+                $redirect .= '?alert=success&acao=editar';
+            }
+        } elseif ($acao === 'excluir') {
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            if ($id <= 0) {
+                throw new Exception('Médico inválido para exclusão.');
+            }
+
+            /* ============================================================
+               SELECT & DELETE: Exclusão do Médico
+            ============================================================ */
+            $sqlCheck = "SELECT COUNT(*) AS total FROM agendamentos WHERE medico_id = ?";
+            $stmtCheck = mysqli_prepare($conexao_bd, $sqlCheck);
+            if ($stmtCheck) {
+                mysqli_stmt_bind_param($stmtCheck, "i", $id);
+                mysqli_stmt_execute($stmtCheck);
+                $resultCheck = mysqli_stmt_get_result($stmtCheck);
+                if ($resultCheck) {
+                    $refRow = mysqli_fetch_assoc($resultCheck);
+                    if (intval($refRow['total']) > 0) {
+                        throw new Exception('Não é possível excluir este médico porque ele possui agendamentos vinculados. Use editar para inativar.');
+                    }
+                }
+                mysqli_stmt_close($stmtCheck);
+            }
+
+            $sqlDel = "DELETE FROM medicos WHERE id = ?";
+            $stmtDel = mysqli_prepare($conexao_bd, $sqlDel);
+            if ($stmtDel) {
+                mysqli_stmt_bind_param($stmtDel, "i", $id);
+                if (!mysqli_stmt_execute($stmtDel)) {
+                    throw new Exception('Não foi possível excluir o médico. ' . mysqli_error($conexao_bd));
+                }
+                mysqli_stmt_close($stmtDel);
+            }
+            $redirect .= '?alert=success&acao=excluir';
+        }
+    } catch (Exception $e) {
+        $redirect .= '?alert=error&message=' . rawurlencode($e->getMessage());
+    }
+
+    header("Location: " . $redirect);
+    exit;
+}
 
 /* ============================================================
-   FILTROS DE BUSCA
-   TODO: Usar estes valores para montar a query no banco
-   Exemplo: WHERE (nome LIKE :nome OR :nome IS NULL)
-            AND (especialidade = :especialidade OR :especialidade IS NULL)
-            AND (status = :status OR :status IS NULL)
+   FILTROS DE BUSCA (Dinâmicos)
 ============================================================ */
-$filtroNome          = trim(isset($_GET['nome'])          ? $_GET['nome']          : '');
-$filtroEspecialidade = trim(isset($_GET['especialidade']) ? $_GET['especialidade'] : '');
-$filtroStatus        = trim(isset($_GET['status'])        ? $_GET['status']        : '');
+$filtroNome            = trim(isset($_GET['nome'])            ? $_GET['nome']            : '');
+$filtroEspecialidadeId = trim(isset($_GET['especialidade_id']) ? $_GET['especialidade_id'] : '');
+$filtroStatus          = trim(isset($_GET['status'])          ? $_GET['status']          : '');
 
 /* ============================================================
-   MÉDICOS FICTÍCIOS (placeholder para visualização)
-   ⚠️ REMOVER QUANDO INTEGRAR COM O BANCO DE DADOS
-   TODO: Substituir por:
-   $medicos = buscarMedicos($filtroNome, $filtroEspecialidade, $filtroStatus);
+   [SEGURANÇA] CONSULTA DE MÉDICOS (Construção Dinâmica da Query)
 ============================================================ */
-$medicos = array(
-    array('id' => 1, 'nome' => 'Dr. Carlos Lima',   'crm' => 'CRM/SP 12345', 'especialidade' => 'Cardiologia',   'telefone' => '(11) 91234-5678', 'email' => 'carlos.lima@clinica.com',   'status' => 'Ativo'),
-    array('id' => 2, 'nome' => 'Dra. Ana Paula',    'crm' => 'CRM/SP 23456', 'especialidade' => 'Dermatologia',  'telefone' => '(11) 92345-6789', 'email' => 'ana.paula@clinica.com',    'status' => 'Ativo'),
-    array('id' => 3, 'nome' => 'Dr. Pedro Alves',   'crm' => 'CRM/SP 34567', 'especialidade' => 'Ortopedia',     'telefone' => '(11) 93456-7890', 'email' => 'pedro.alves@clinica.com',  'status' => 'Ativo'),
-    array('id' => 4, 'nome' => 'Dra. Marina Reis',  'crm' => 'CRM/SP 45678', 'especialidade' => 'Pediatria',     'telefone' => '(11) 94567-8901', 'email' => 'marina.reis@clinica.com',  'status' => 'Ativo'),
-    array('id' => 5, 'nome' => 'Dr. Ricardo Souza', 'crm' => 'CRM/SP 56789', 'especialidade' => 'Neurologia',    'telefone' => '(11) 95678-9012', 'email' => 'ricardo.souza@clinica.com','status' => 'Inativo'),
-    array('id' => 6, 'nome' => 'Dra. Fernanda Melo','crm' => 'CRM/SP 67890', 'especialidade' => 'Ginecologia',   'telefone' => '(11) 96789-0123', 'email' => 'fernanda.melo@clinica.com','status' => 'Ativo'),
-);
+$medicos = array();
+$where = array();
+$params = array();
+$types = "";
 
-/* ============================================================
-   APLICAÇÃO DOS FILTROS NOS DADOS FICTÍCIOS
-   TODO: Remover este bloco ao integrar com o banco —
-         a filtragem passará a ser feita diretamente na query SQL
-============================================================ */
-if ($filtroNome !== '' || $filtroEspecialidade !== '' || $filtroStatus !== '') {
-    $medicos = array_values(array_filter($medicos, function($med) use (
-        $filtroNome, $filtroEspecialidade, $filtroStatus
-    ) {
-        if ($filtroNome !== '' && stripos($med['nome'], $filtroNome) === false) {
-            return false;
+if ($filtroNome !== '') {
+    $where[] = "m.nome LIKE ?";
+    $params[] = "%" . $filtroNome . "%";
+    $types .= "s";
+}
+
+if ($filtroEspecialidadeId !== '' && intval($filtroEspecialidadeId) > 0) {
+    $where[] = "m.id IN (SELECT medico_id FROM medico_especialidades WHERE especialidade_id = ?)";
+    $params[] = intval($filtroEspecialidadeId);
+    $types .= "i";
+}
+
+if ($filtroStatus !== '') {
+    $where[] = "m.status = ?";
+    $params[] = $filtroStatus;
+    $types .= "s";
+}
+
+$sqlConsulta = "SELECT m.id, m.nome, m.crm, m.telefone, m.email, m.status, "
+             . "GROUP_CONCAT(DISTINCT e.id SEPARATOR ',') AS especialidades_ids, "
+             . "GROUP_CONCAT(DISTINCT e.nome SEPARATOR ', ') AS especialidades_nomes, "
+             . "COUNT(DISTINCT a.id) AS agendamento_count, "
+             . "SUM(CASE WHEN a.data >= CURDATE() THEN 1 ELSE 0 END) AS future_agendamento_count "
+             . "FROM medicos m "
+             . "LEFT JOIN medico_especialidades me ON me.medico_id = m.id "
+             . "LEFT JOIN especialidades e ON e.id = me.especialidade_id "
+             . "LEFT JOIN agendamentos a ON a.medico_id = m.id";
+
+if (count($where) > 0) {
+    $sqlConsulta .= " WHERE " . implode(' AND ', $where);
+}
+$sqlConsulta .= " GROUP BY m.id, m.nome, m.crm, m.telefone, m.email, m.status ORDER BY m.nome ASC";
+
+$stmtMedicos = mysqli_prepare($conexao_bd, $sqlConsulta);
+if ($stmtMedicos) {
+    if (!empty($params)) {
+        mysqli_stmt_bind_param($stmtMedicos, $types, ...$params);
+    }
+    mysqli_stmt_execute($stmtMedicos);
+    $resultMedicos = mysqli_stmt_get_result($stmtMedicos);
+    
+    if ($resultMedicos) {
+        while ($row = mysqli_fetch_assoc($resultMedicos)) {
+            $medicos[] = $row;
         }
-        if ($filtroEspecialidade !== '' && $med['especialidade'] !== $filtroEspecialidade) {
-            return false;
-        }
-        if ($filtroStatus !== '' && $med['status'] !== $filtroStatus) {
-            return false;
-        }
-        return true;
-    }));
+    }
+    mysqli_stmt_close($stmtMedicos);
+} else {
+    if ($pageError === '') {
+        $pageError = mysqli_error($conexao_bd);
+    }
 }
 
 /* ============================================================
    ESPECIALIDADES DISPONÍVEIS
-   TODO: Substituir por consulta ao banco:
-   $especialidades = buscarEspecialidades();
 ============================================================ */
-$especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologia', 'Ortopedia', 'Pediatria');
+$especialidades = array();
+$sqlEsp = "SELECT id, nome, cbo FROM especialidades ORDER BY nome";
+$resultEsp = mysqli_query($conexao_bd, $sqlEsp);
+if ($resultEsp) {
+    while ($row = mysqli_fetch_assoc($resultEsp)) {
+        $especialidades[] = $row;
+    }
+} else {
+    if ($pageError === '') {
+        $pageError = mysqli_error($conexao_bd);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -122,284 +407,7 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- ================ ESTILOS DA APLICAÇÃO ================ -->
-    <style>
-        :root {
-            --azul-primario: #0d6efd;
-            --azul-escuro:   #084298;
-            --azul-claro:    #e7f1ff;
-            --cinza-fundo:   #f5f7fa;
-            --cinza-borda:   #e3e6ea;
-            --texto-escuro:  #1f2d3d;
-            --sidebar-larg:  250px;
-        }
-
-        body {
-            background-color: var(--cinza-fundo);
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-            color: var(--texto-escuro);
-            overflow-x: hidden;
-        }
-
-        /* ==================== NAVBAR SUPERIOR ==================== */
-        .navbar-topo {
-            background: linear-gradient(90deg, var(--azul-primario) 0%, var(--azul-escuro) 100%);
-            height: 60px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 1030;
-        }
-        .navbar-topo .navbar-brand {
-            color: #fff;
-            font-weight: 600;
-            font-size: 1.25rem;
-        }
-        .navbar-topo .navbar-brand i {
-            margin-right: 8px;
-        }
-        .btn-sanduiche {
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-size: 1.3rem;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: background 0.2s;
-        }
-        .btn-sanduiche:hover {
-            background: rgba(255,255,255,0.15);
-        }
-        .operador-toggle {
-            background: transparent;
-            border: none;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            border-radius: 30px;
-            transition: background 0.2s;
-        }
-        .operador-toggle:hover, .operador-toggle:focus {
-            background: rgba(255,255,255,0.15);
-            color: #fff;
-        }
-        .operador-toggle i.fa-circle-user {
-            font-size: 1.6rem;
-        }
-        .dropdown-menu-operador {
-            min-width: 220px;
-            border-radius: 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-            border: none;
-        }
-        .dropdown-menu-operador .dropdown-item i {
-            width: 22px;
-            color: var(--azul-primario);
-        }
-
-        /* ==================== SIDEBAR LATERAL ==================== */
-        .sidebar {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            width: var(--sidebar-larg);
-            height: calc(100vh - 60px);
-            background: #fff;
-            border-right: 1px solid var(--cinza-borda);
-            padding: 20px 0;
-            transition: transform 0.3s ease;
-            z-index: 1020;
-            overflow-y: auto;
-        }
-        .sidebar.oculta {
-            transform: translateX(calc(var(--sidebar-larg) * -1));
-        }
-        .sidebar .nav-link {
-            color: var(--texto-escuro);
-            padding: 12px 20px;
-            border-left: 3px solid transparent;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .sidebar .nav-link i {
-            width: 22px;
-            color: var(--azul-primario);
-            font-size: 1.05rem;
-        }
-        .sidebar .nav-link:hover {
-            background: var(--azul-claro);
-            border-left-color: var(--azul-primario);
-            color: var(--azul-escuro);
-        }
-        .sidebar .nav-link.ativo {
-            background: var(--azul-claro);
-            border-left-color: var(--azul-primario);
-            color: var(--azul-escuro);
-            font-weight: 600;
-        }
-
-        /* Overlay (em mobile, escurece o fundo quando sidebar aberta) */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 60px; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.4);
-            z-index: 1010;
-        }
-        .sidebar-overlay.ativo {
-            display: block;
-        }
-
-        /* ==================== CONTEÚDO PRINCIPAL ==================== */
-        .conteudo-principal {
-            margin-top: 60px;
-            margin-left: var(--sidebar-larg);
-            padding: 25px;
-            transition: margin-left 0.3s ease;
-            min-height: calc(100vh - 60px);
-        }
-        .conteudo-principal.expandido {
-            margin-left: 0;
-        }
-
-        @media (max-width: 991.98px) {
-            .sidebar {
-                transform: translateX(calc(var(--sidebar-larg) * -1));
-            }
-            .sidebar.aberta {
-                transform: translateX(0);
-                box-shadow: 2px 0 12px rgba(0,0,0,0.15);
-            }
-            .conteudo-principal {
-                margin-left: 0;
-            }
-        }
-
-        /* ==================== CABEÇALHO DA PÁGINA ==================== */
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 22px;
-        }
-        .page-header h2 {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--azul-escuro);
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .page-header h2 i {
-            color: var(--azul-primario);
-        }
-
-        /* ==================== CARD GENÉRICO ==================== */
-        .card-pagina {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            border: 1px solid var(--cinza-borda);
-            padding: 20px 24px;
-            margin-bottom: 20px;
-        }
-        .card-pagina .card-titulo {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--azul-escuro);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .card-pagina .card-titulo i {
-            color: var(--azul-primario);
-        }
-
-        /* ==================== TABELA ==================== */
-        .tabela-medicos {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 0.88rem;
-        }
-        .tabela-medicos thead th {
-            background: var(--azul-claro);
-            color: var(--azul-escuro);
-            font-weight: 600;
-            padding: 10px 14px;
-            border-bottom: 2px solid var(--cinza-borda);
-            white-space: nowrap;
-        }
-        .tabela-medicos tbody tr {
-            transition: background 0.15s;
-        }
-        .tabela-medicos tbody tr:hover {
-            background: #f8fbff;
-        }
-        .tabela-medicos tbody td {
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--cinza-borda);
-            vertical-align: middle;
-        }
-        .tabela-medicos tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* ==================== BADGES DE STATUS ==================== */
-        .badge-status {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.78rem;
-            font-weight: 600;
-        }
-        .badge-ativo {
-            background: #d1e7dd;
-            color: #0a3622;
-        }
-        .badge-inativo {
-            background: #f8d7da;
-            color: #58151c;
-        }
-
-        /* ==================== AVATAR DO MÉDICO ==================== */
-        .avatar-medico {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: var(--azul-claro);
-            color: var(--azul-primario);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.82rem;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
-
-        /* ==================== MODAL ==================== */
-        .modal-form .modal-header {
-            background: var(--azul-primario);
-            color: #fff;
-        }
-        .modal-form .modal-header .btn-close {
-            filter: invert(1);
-        }
-        .modal-form label {
-            font-weight: 500;
-            font-size: 0.88rem;
-            margin-bottom: 4px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css?v=<?php echo time(); ?>">
 </head>
 <body>
 
@@ -427,8 +435,8 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                 <li><a class="dropdown-item" href="#"><i class="fa-solid fa-user"></i><?php echo htmlspecialchars($operadorNome) ?></a></li>
                 <li><a class="dropdown-item" href="#"><i class="fa-solid fa-envelope"></i><?php echo htmlspecialchars($operadorEmail) ?></a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#"><i class="fa-solid fa-gear"></i>Configurações</a></li>
-                <li><a class="dropdown-item" href="#"><i class="fa-solid fa-right-from-bracket"></i>Sair</a></li>
+                <li><a class="dropdown-item" href="config_usuarios.php"><i class="fa-solid fa-gear"></i>Configurações</a></li>
+                <li><a class="dropdown-item" href="logout.php"><i class="fa-solid fa-right-from-bracket"></i>Sair</a></li>
             </ul>
         </div>
     </nav>
@@ -448,8 +456,16 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                 <a class="nav-link ativo" href="cadastro_medicos.php"><i class="fa-solid fa-user-doctor"></i> Cadastro de Médicos</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#"><i class="fa-solid fa-list-check"></i> Cadastro de Especialidades</a>
+                <a class="nav-link" href="cadastro_especialidades.php"><i class="fa-solid fa-list-check"></i> Cadastro de Especialidades</a>
             </li>
+            <?php if ($perfilUsuario == "admin") { ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin_usuarios.php">
+                        <i class="fa-solid fa-users"></i>
+                        Administração de Usuários
+                    </a>
+                </li>
+            <?php } ?>
         </ul>
     </aside>
 
@@ -464,42 +480,34 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
         <!-- Cabeçalho da página -->
         <div class="page-header">
             <h2><i class="fa-solid fa-user-doctor"></i> Cadastro de Médicos</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalFormMedico">
+            <button id="btnNovoMedico" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalFormMedico">
                 <i class="fa-solid fa-plus me-1"></i> Novo Médico
             </button>
         </div>
 
-        <!-- ============================================================
-             FILTROS DE BUSCA
-             TODO: ao submeter, os valores serão enviados via GET e usados
-             para filtrar a consulta ao banco de dados
-        ============================================================ -->
         <div class="card-pagina">
             <div class="card-titulo"><i class="fa-solid fa-magnifying-glass"></i> Filtros</div>
             <form method="GET" action="cadastro_medicos.php">
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label for="filtroNome">Nome</label>
                         <input type="text" class="form-control form-control-sm" id="filtroNome"
                                name="nome" placeholder="Nome do médico"
                                value="<?php echo htmlspecialchars($filtroNome) ?>">
                     </div>
                     <div class="col-md-4">
-                        <label for="filtroEspecialidade">Especialidade</label>
-                        <select class="form-select form-select-sm" id="filtroEspecialidade" name="especialidade">
-                            <option value="">Todas</option>
+                        <select class="form-select form-select-lg" id="filtroEspecialidade" name="especialidade_id">
+                            <option value="">Todas Especialidades</option>
                             <?php foreach ($especialidades as $esp): ?>
-                                <option value="<?php echo htmlspecialchars($esp) ?>"
-                                    <?php echo ($filtroEspecialidade === $esp) ? 'selected' : '' ?>>
-                                    <?php echo htmlspecialchars($esp) ?>
+                                <option value="<?php echo intval($esp['id']) ?>"
+                                    <?php echo ($filtroEspecialidadeId === strval($esp['id'])) ? 'selected' : '' ?>>
+                                    <?php echo htmlspecialchars($esp['nome'] . ' (' . $esp['cbo'] . ')') ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label for="filtroStatus">Status</label>
-                        <select class="form-select form-select-sm" id="filtroStatus" name="status">
-                            <option value="">Todos</option>
+                        <select class="form-select form-select-lg" id="filtroStatus" name="status">
+                            <option value="">Todos Status</option>
                             <option value="Ativo"   <?php echo ($filtroStatus === 'Ativo')   ? 'selected' : '' ?>>Ativo</option>
                             <option value="Inativo" <?php echo ($filtroStatus === 'Inativo') ? 'selected' : '' ?>>Inativo</option>
                         </select>
@@ -518,13 +526,11 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
 
         <!-- ============================================================
              TABELA DE MÉDICOS
-             TODO: os dados virão do banco — $medicos será o resultado
-             da query filtrada. A paginação também será implementada aqui.
+             Os dados são carregados do banco de dados e exibidos conforme filtros.
         ============================================================ -->
         <div class="card-pagina">
             <div class="card-titulo d-flex justify-content-between align-items-center">
                 <span><i class="fa-solid fa-table-list"></i> Médicos</span>
-                <!-- TODO: exibir total real vindo do banco -->
                 <span id="contadorRegistros" class="text-muted" style="font-size:0.82rem; font-weight:400;">
                     <?php echo count($medicos) ?> registro(s) encontrado(s)
                 </span>
@@ -537,7 +543,7 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                             <th>#</th>
                             <th>Nome</th>
                             <th>CRM</th>
-                            <th>Especialidade</th>
+                            <th>Especialidades</th>
                             <th>Telefone</th>
                             <th>E-mail</th>
                             <th>Status</th>
@@ -580,30 +586,37 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                                     </div>
                                 </td>
                                 <td><?php echo htmlspecialchars($med['crm']) ?></td>
-                                <td><?php echo htmlspecialchars($med['especialidade']) ?></td>
+                                <td><?php echo htmlspecialchars($med['especialidades_nomes'] ?? '') ?></td>
                                 <td><?php echo htmlspecialchars($med['telefone']) ?></td>
                                 <td><?php echo htmlspecialchars($med['email']) ?></td>
                                 <td><span class="badge-status <?php echo $classeBadge ?>"><?php echo htmlspecialchars($med['status']) ?></span></td>
                                 <td class="text-center" style="white-space:nowrap;">
-                                    <!-- TODO: passar dados reais para o modal de edição -->
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2 btn-editar"
+                                    <button class="btn btn-sm btn-icon-sm btn-outline-primary btn-editar"
                                             title="Editar"
                                             data-id="<?php echo $med['id'] ?>"
                                             data-nome="<?php echo htmlspecialchars($med['nome']) ?>"
                                             data-crm="<?php echo htmlspecialchars($med['crm']) ?>"
-                                            data-especialidade="<?php echo htmlspecialchars($med['especialidade']) ?>"
+                                            data-especialidades-nomes="<?php echo htmlspecialchars($med['especialidades_nomes'] ?? '') ?>"
+                                            data-especialidades-ids="<?php echo htmlspecialchars($med['especialidades_ids'] ?? '') ?>"
                                             data-telefone="<?php echo htmlspecialchars($med['telefone']) ?>"
                                             data-email="<?php echo htmlspecialchars($med['email']) ?>"
-                                            data-status="<?php echo htmlspecialchars($med['status']) ?>">
+                                            data-status="<?php echo htmlspecialchars($med['status']) ?>"
+                                            data-future-agendamentos="<?php echo intval($med['future_agendamento_count']) ?>">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
-                                    <!-- TODO: confirmar e enviar POST acao=excluir&id=X -->
-                                    <button class="btn btn-sm btn-outline-danger py-0 px-2 btn-excluir"
-                                            title="Excluir médico"
-                                            data-id="<?php echo $med['id'] ?>"
-                                            data-nome="<?php echo htmlspecialchars($med['nome']) ?>">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
+                                    <?php if (intval($med['agendamento_count']) === 0): ?>
+                                        <button class="btn btn-sm btn-icon-sm btn-outline-danger btn-excluir"
+                                                title="Excluir médico"
+                                                data-id="<?php echo $med['id'] ?>"
+                                                data-nome="<?php echo htmlspecialchars($med['nome']) ?>">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <button class="btn btn-sm btn-icon-sm btn-outline-secondary" type="button" disabled
+                                                title="Este médico possui agendamentos vinculados e não pode ser excluído">
+                                            <i class="fa-solid fa-link"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -614,9 +627,7 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
 
             <!-- ============================================================
                  PAGINAÇÃO
-                 TODO: implementar após integrar com o banco.
-                 Variáveis necessárias: $paginaAtual, $totalPaginas
-                 Exemplo: ?nome=X&especialidade=Y&pagina=2
+                 Nesta versão exibe todos os registros; paginação pode ser adicionada futuramente.
             ============================================================ -->
             <div class="d-flex justify-content-end mt-3">
                 <nav aria-label="Paginação">
@@ -633,8 +644,7 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
 
     <!-- ==================================================
          MODAL — NOVO / EDITAR MÉDICO
-         TODO: ao confirmar, submeter o formulário via POST
-               com acao='novo' ou acao='editar'
+         O formulário envia os dados via POST para cadastro_medicos.php.
     ================================================== -->
     <div class="modal fade modal-form" id="modalFormMedico" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -646,10 +656,10 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
 
-                <!-- TODO: action="cadastro_medicos.php" method="POST" ao integrar com banco -->
-                <form id="formMedico">
+                <form id="formMedico" action="cadastro_medicos.php" method="POST">
                     <input type="hidden" name="acao" id="formAcao" value="novo">
                     <input type="hidden" name="id"   id="formId"   value="">
+                    <input type="hidden" id="formHasFutureAppointments" value="0">
 
                     <div class="modal-body">
                         <div class="row g-3">
@@ -663,16 +673,17 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                                 <input type="text" class="form-control" id="formCrm" name="crm"
                                        placeholder="Ex: CRM/SP 12345" required>
                             </div>
-                            <div class="col-md-6">
-                                <label for="formEspecialidade">Especialidade <span class="text-danger">*</span></label>
-                                <select class="form-select" id="formEspecialidade" name="especialidade" required>
-                                    <option value="">Selecione...</option>
-                                    <?php foreach ($especialidades as $esp): ?>
-                                        <option value="<?php echo htmlspecialchars($esp) ?>"><?php echo htmlspecialchars($esp) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <!-- TODO: popular via cadastro_especialidades.php -->
+                            
+                            <div class="col-12">
+                                <label for="formEspecialidadeInput">Especialidades <span class="text-danger">*</span></label>
+                                <div class="position-relative">
+                                    <input type="text" class="form-control" id="formEspecialidadeInput" placeholder="Digite para buscar especialidades" autocomplete="off">
+                                    <div class="especialidades-suggestions d-none" id="especialidadesSuggestions"></div>
+                                </div>
+                                <div id="formEspecialidadesTags" class="especialidades-multi mt-2"></div>
+                                <div id="formEspecialidadesHidden"></div>
                             </div>
+                            
                             <div class="col-md-6">
                                 <label for="formTelefone">Telefone</label>
                                 <input type="text" class="form-control" id="formTelefone" name="telefone"
@@ -695,7 +706,7 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                        <!-- TODO: mudar para type="submit" ao integrar com banco -->
+
                         <button type="button" class="btn btn-primary" onclick="salvarMedico()">
                             <i class="fa-solid fa-floppy-disk me-1"></i> Salvar
                         </button>
@@ -704,6 +715,11 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
             </div>
         </div>
     </div>
+
+    <form id="formExcluir" action="cadastro_medicos.php" method="POST" style="display:none;">
+        <input type="hidden" name="acao" value="excluir">
+        <input type="hidden" name="id" id="formExcluirId" value="">
+    </form>
 
     <!-- ================ SCRIPTS ================ -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
@@ -745,6 +761,200 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
         var modalFormMedicoEl = document.getElementById('modalFormMedico');
         var modalFormMedico   = new bootstrap.Modal(modalFormMedicoEl);
         var modoEdicao        = false;
+        var btnNovoMedico     = document.getElementById('btnNovoMedico');
+        var formEspecialidadeInput = document.getElementById('formEspecialidadeInput');
+        var especialidadesTags     = document.getElementById('formEspecialidadesTags');
+        var especialidadesHidden   = document.getElementById('formEspecialidadesHidden');
+        var especialidadesSuggestions = document.getElementById('especialidadesSuggestions');
+        var urlParams         = new URLSearchParams(window.location.search);
+        var pageAlert         = urlParams.get('alert');
+        var pageAction        = urlParams.get('acao');
+        var serverErrorMessage = <?php echo json_encode($pageError); ?>;
+        var formHasFutureAppointments = document.getElementById('formHasFutureAppointments');
+        var especialidadesData = <?php echo json_encode($especialidades); ?>;
+        var selectedEspecialidades = [];
+
+        function renderEspecialidades() {
+            especialidadesTags.innerHTML = '';
+            especialidadesHidden.innerHTML = '';
+
+            if (selectedEspecialidades.length === 0) {
+                var placeholder = document.createElement('div');
+                placeholder.className = 'text-muted';
+                placeholder.style.fontSize = '0.88rem';
+                placeholder.textContent = 'Nenhuma especialidade selecionada.';
+                especialidadesTags.appendChild(placeholder);
+            }
+
+            selectedEspecialidades.forEach(function(item) {
+                var tag = document.createElement('span');
+                tag.className = 'especialidade-tag';
+                tag.innerHTML = '<span>' + item.nome + ' (' + item.cbo + ')</span>' +
+                    '<button type="button" aria-label="Remover ' + item.nome + '">&times;</button>';
+                tag.querySelector('button').addEventListener('click', function() {
+                    removeEspecialidade(item.id);
+                });
+                especialidadesTags.appendChild(tag);
+
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'especialidades[]';
+                hidden.value = item.id;
+                especialidadesHidden.appendChild(hidden);
+            });
+        }
+
+        function updateSuggestions(filter) {
+            var query = filter.trim().toLowerCase();
+            var available = especialidadesData.filter(function(item) {
+                return !selectedEspecialidades.some(function(sel) { return sel.id === item.id; });
+            });
+            if (query !== '') {
+                available = available.filter(function(item) {
+                    return item.nome.toLowerCase().indexOf(query) !== -1 || item.cbo.toLowerCase().indexOf(query) !== -1;
+                }).slice(0, 8);
+            }
+            especialidadesSuggestions.innerHTML = '';
+
+            if (available.length === 0) {
+                var noResult = document.createElement('div');
+                noResult.className = 'sem-resultado';
+                noResult.textContent = 'Nenhuma especialidade encontrada.';
+                especialidadesSuggestions.appendChild(noResult);
+                especialidadesSuggestions.classList.remove('d-none');
+                return;
+            }
+
+            available.forEach(function(item) {
+                var option = document.createElement('button');
+                option.type = 'button';
+                option.textContent = item.nome + ' (' + item.cbo + ')';
+                option.addEventListener('click', function() {
+                    addEspecialidade(item.id);
+                });
+                especialidadesSuggestions.appendChild(option);
+            });
+            especialidadesSuggestions.classList.remove('d-none');
+        }
+
+        function addEspecialidade(id) {
+            if (selectedEspecialidades.some(function(item) { return item.id === id; })) {
+                formEspecialidadeInput.value = '';
+                updateSuggestions('');
+                return;
+            }
+            var item = especialidadesData.find(function(item) { return item.id === id; });
+            if (!item) return;
+            selectedEspecialidades.push(item);
+            formEspecialidadeInput.value = '';
+            renderEspecialidades();
+            updateSuggestions('');
+        }
+
+        function removeEspecialidade(id) {
+            selectedEspecialidades = selectedEspecialidades.filter(function(item) { return item.id !== id; });
+            renderEspecialidades();
+            updateSuggestions(formEspecialidadeInput.value);
+        }
+
+        function setSelectedEspecialidades(ids) {
+            selectedEspecialidades = especialidadesData.filter(function(item) {
+                return ids.indexOf(String(item.id)) !== -1;
+            });
+            renderEspecialidades();
+        }
+
+        function resetEspecialidades() {
+            selectedEspecialidades = [];
+            if (formEspecialidadeInput) {
+                formEspecialidadeInput.value = '';
+            }
+            renderEspecialidades();
+            especialidadesSuggestions.classList.add('d-none');
+        }
+
+        if (formEspecialidadeInput) {
+            formEspecialidadeInput.addEventListener('input', function() {
+                updateSuggestions(this.value);
+            });
+            formEspecialidadeInput.addEventListener('focus', function() {
+                updateSuggestions(this.value);
+            });
+            formEspecialidadeInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    var available = especialidadesData.filter(function(item) {
+                        return !selectedEspecialidades.some(function(sel) { return sel.id === item.id; });
+                    }).filter(function(item) {
+                        var query = formEspecialidadeInput.value.trim().toLowerCase();
+                        return query !== '' && (item.nome.toLowerCase().indexOf(query) !== -1 || item.cbo.toLowerCase().indexOf(query) !== -1);
+                    });
+                    if (available.length > 0) {
+                        addEspecialidade(available[0].id);
+                    }
+                } else if (event.key === 'Backspace' && formEspecialidadeInput.value === '') {
+                    if (selectedEspecialidades.length > 0) {
+                        removeEspecialidade(selectedEspecialidades[selectedEspecialidades.length - 1].id);
+                    }
+                }
+            });
+            document.addEventListener('click', function(event) {
+                if (!formEspecialidadeInput.contains(event.target) && !especialidadesSuggestions.contains(event.target)) {
+                    especialidadesSuggestions.classList.add('d-none');
+                }
+            });
+        }
+
+        if (serverErrorMessage) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ops, algo deu errado!',
+                text: serverErrorMessage,
+                confirmButtonText: 'Entendi'
+            });
+        } else if (pageAlert === 'success') {
+            var message = '';
+            if (pageAction === 'novo') {
+                message = 'Médico cadastrado com sucesso!';
+            } else if (pageAction === 'editar') {
+                message = 'Médico atualizado com sucesso!';
+            } else if (pageAction === 'excluir') {
+                message = 'Médico excluído com sucesso!';
+            }
+            if (message) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Tudo certo!',
+                    text: message,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2200,
+                    timerProgressBar: true
+                });
+            }
+        } else if (pageAlert === 'error') {
+            var errorMessage = urlParams.get('message') || 'Ocorreu um erro inesperado.';
+            errorMessage = decodeURIComponent(errorMessage);
+            Swal.fire({
+                icon: 'error',
+                title: 'Ops, algo deu errado!',
+                text: errorMessage,
+                confirmButtonText: 'Entendi'
+            });
+        }
+
+        if (btnNovoMedico) {
+            btnNovoMedico.addEventListener('click', function() {
+                modoEdicao = false;
+                document.getElementById('modalFormTitulo').innerHTML =
+                    '<i class="fa-solid fa-user-plus me-2"></i>Novo Médico';
+                document.getElementById('formAcao').value = 'novo';
+                document.getElementById('formId').value   = '';
+                document.getElementById('formMedico').reset();
+                resetEspecialidades();
+            });
+        }
 
         // Reseta o formulário apenas quando aberto no modo "Novo"
         modalFormMedicoEl.addEventListener('show.bs.modal', function() {
@@ -754,12 +964,13 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                 document.getElementById('formAcao').value = 'novo';
                 document.getElementById('formId').value   = '';
                 document.getElementById('formMedico').reset();
+                resetEspecialidades();
             }
             modoEdicao = false;
         });
 
         // ==================================================
-        // EVENT DELEGATION — Editar e Excluir (cobre linhas dinâmicas)
+        // EVENT DELEGATION — Editar e Excluir
         // ==================================================
         document.querySelector('.tabela-medicos').addEventListener('click', function(e) {
             var btnEditar  = e.target.closest('.btn-editar');
@@ -773,10 +984,15 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                 document.getElementById('formId').value             = btnEditar.dataset.id;
                 document.getElementById('formNome').value           = btnEditar.dataset.nome;
                 document.getElementById('formCrm').value            = btnEditar.dataset.crm;
-                document.getElementById('formEspecialidade').value  = btnEditar.dataset.especialidade;
+                
+                // --- SELEÇÃO DE MÚLTIPLAS ESPECIALIDADES ---
+                var espIds = btnEditar.dataset.especialidadesIds ? btnEditar.dataset.especialidadesIds.split(',') : [];
+                setSelectedEspecialidades(espIds);
+
                 document.getElementById('formTelefone').value       = btnEditar.dataset.telefone;
                 document.getElementById('formEmail').value          = btnEditar.dataset.email;
                 document.getElementById('formStatus').value         = btnEditar.dataset.status;
+                document.getElementById('formHasFutureAppointments').value = btnEditar.dataset.futureAgendamentos || '0';
                 modalFormMedico.show();
             }
 
@@ -792,17 +1008,8 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
                     cancelButtonText:   'Voltar'
                 }).then(function(result) {
                     if (result.isConfirmed) {
-                        // TODO: substituir pelo envio real ao banco
-                        btnExcluir.closest('tr').remove();
-                        atualizarContadorMedico();
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Excluído!',
-                            text: 'O médico foi removido do cadastro.',
-                            confirmButtonColor: '#0d6efd',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
+                        document.getElementById('formExcluirId').value = btnExcluir.dataset.id;
+                        document.getElementById('formExcluir').submit();
                     }
                 });
             }
@@ -810,161 +1017,40 @@ $especialidades = array('Cardiologia', 'Dermatologia', 'Ginecologia', 'Neurologi
 
         // ==================================================
         // FUNÇÃO PRINCIPAL: salvar médico
-        // TODO: substituir o corpo por fetch/AJAX ao integrar com o banco
+        // Realiza envio direto ao servidor via POST
         // ==================================================
         function salvarMedico() {
             var form = document.getElementById('formMedico');
+            if (selectedEspecialidades.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Especialidades obrigatórias',
+                    text: 'Selecione pelo menos uma especialidade para este médico.',
+                    confirmButtonColor: '#0d6efd'
+                });
+                formEspecialidadeInput.focus();
+                return;
+            }
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
             }
-
-            var acao          = document.getElementById('formAcao').value;
-            var id            = document.getElementById('formId').value;
-            var nome          = document.getElementById('formNome').value.trim();
-            var crm           = document.getElementById('formCrm').value.trim();
-            var especialidade = document.getElementById('formEspecialidade').value;
-            var telefone      = document.getElementById('formTelefone').value.trim();
-            var email         = document.getElementById('formEmail').value.trim();
-            var status        = document.getElementById('formStatus').value;
-            var iniciais      = gerarIniciais(nome);
-
-            if (acao === 'editar') {
-                var btnEditar = document.querySelector('.btn-editar[data-id="' + id + '"]');
-                if (btnEditar) {
-                    var tr = btnEditar.closest('tr');
-                    tr.cells[1].innerHTML =
-                        '<div class="d-flex align-items-center">' +
-                        '<span class="avatar-medico">' + iniciais + '</span>' + nome + '</div>';
-                    tr.cells[2].textContent = crm;
-                    tr.cells[3].textContent = especialidade;
-                    tr.cells[4].textContent = telefone;
-                    tr.cells[5].textContent = email;
-                    tr.cells[6].innerHTML   = '<span class="badge-status ' + getBadgeClassMedico(status) + '">' + status + '</span>';
-
-                    btnEditar.dataset.nome          = nome;
-                    btnEditar.dataset.crm           = crm;
-                    btnEditar.dataset.especialidade = especialidade;
-                    btnEditar.dataset.telefone      = telefone;
-                    btnEditar.dataset.email         = email;
-                    btnEditar.dataset.status        = status;
-
-                    var btnExcluir = tr.querySelector('.btn-excluir');
-                    if (btnExcluir) btnExcluir.dataset.nome = nome;
-                }
-            } else {
-                var tbody    = document.querySelector('.tabela-medicos tbody');
-                var semDados = tbody.querySelector('td[colspan]');
-                if (semDados) semDados.closest('tr').remove();
-
-                var novoId = 'tmp-' + Date.now();
-                tbody.appendChild(criarLinhaMedico(novoId, nome, crm, especialidade, telefone, email, status, iniciais));
-                atualizarContadorMedico();
-            }
-
-            modalFormMedico.hide();
-            Swal.fire({
-                icon: 'success',
-                title: 'Salvo!',
-                text: acao === 'editar' ? 'Médico atualizado com sucesso.' : 'Médico cadastrado com sucesso.',
-                confirmButtonColor: '#0d6efd',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        }
-
-        // Cria um <tr> completo para a tabela de médicos
-        function criarLinhaMedico(id, nome, crm, especialidade, telefone, email, status, iniciais) {
-            var tr = document.createElement('tr');
-
-            var tdId = document.createElement('td'); tdId.className = 'text-muted'; tdId.textContent = '—';
-
-            var tdNome = document.createElement('td');
-            tdNome.innerHTML =
-                '<div class="d-flex align-items-center">' +
-                '<span class="avatar-medico">' + iniciais + '</span>' + nome + '</div>';
-
-            var tdCrm  = document.createElement('td'); tdCrm.textContent  = crm;
-            var tdEsp  = document.createElement('td'); tdEsp.textContent  = especialidade;
-            var tdTel  = document.createElement('td'); tdTel.textContent  = telefone;
-            var tdMail = document.createElement('td'); tdMail.textContent = email;
-
-            var tdSt  = document.createElement('td');
-            var badge = document.createElement('span');
-            badge.className   = 'badge-status ' + getBadgeClassMedico(status);
-            badge.textContent = status;
-            tdSt.appendChild(badge);
-
-            var tdAc = document.createElement('td');
-            tdAc.className        = 'text-center';
-            tdAc.style.whiteSpace = 'nowrap';
-
-            var btnEdit = document.createElement('button');
-            btnEdit.className              = 'btn btn-sm btn-outline-primary py-0 px-2 btn-editar';
-            btnEdit.title                  = 'Editar';
-            btnEdit.innerHTML              = '<i class="fa-solid fa-pen"></i>';
-            btnEdit.dataset.id             = id;
-            btnEdit.dataset.nome           = nome;
-            btnEdit.dataset.crm            = crm;
-            btnEdit.dataset.especialidade  = especialidade;
-            btnEdit.dataset.telefone       = telefone;
-            btnEdit.dataset.email          = email;
-            btnEdit.dataset.status         = status;
-
-            var btnExc = document.createElement('button');
-            btnExc.className      = 'btn btn-sm btn-outline-danger py-0 px-2 btn-excluir';
-            btnExc.title          = 'Excluir médico';
-            btnExc.innerHTML      = '<i class="fa-solid fa-trash"></i>';
-            btnExc.dataset.id     = id;
-            btnExc.dataset.nome   = nome;
-
-            tdAc.appendChild(btnEdit);
-            tdAc.appendChild(btnExc);
-            tr.appendChild(tdId);   tr.appendChild(tdNome); tr.appendChild(tdCrm);
-            tr.appendChild(tdEsp);  tr.appendChild(tdTel);  tr.appendChild(tdMail);
-            tr.appendChild(tdSt);   tr.appendChild(tdAc);
-            return tr;
-        }
-
-        // Retorna a classe CSS do badge de status do médico
-        function getBadgeClassMedico(status) {
-            return status === 'Ativo' ? 'badge-ativo' : 'badge-inativo';
-        }
-
-        // Gera as iniciais do nome para o avatar
-        function gerarIniciais(nome) {
-            var partes   = nome.split(' ');
-            var iniciais = '';
-            for (var i = 0; i < partes.length; i++) {
-                var p = partes[i].replace(/^(Dr\.|Dra\.)$/i, '');
-                if (p.length > 0) {
-                    iniciais += p.charAt(0).toUpperCase();
-                    if (iniciais.length === 2) break;
+            if (document.getElementById('formAcao').value === 'editar') {
+                var status = document.getElementById('formStatus').value;
+                var futureCount = parseInt(formHasFutureAppointments.value, 10) || 0;
+                if (status === 'Inativo' && futureCount > 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Atenção',
+                        text: 'Não é possível inativar este médico enquanto houver agendamentos futuros.',
+                        confirmButtonColor: '#0d6efd'
+                    });
+                    return;
                 }
             }
-            return iniciais || nome.charAt(0).toUpperCase();
+            form.submit();
         }
 
-        // Atualiza o texto do contador de registros
-        function atualizarContadorMedico() {
-            var tbody  = document.querySelector('.tabela-medicos tbody');
-            var linhas = tbody.rows;
-            var total  = 0;
-            for (var i = 0; i < linhas.length; i++) {
-                if (!linhas[i].querySelector('td[colspan]')) total++;
-            }
-            if (tbody.rows.length === 0) {
-                var tr = document.createElement('tr');
-                var td = document.createElement('td');
-                td.setAttribute('colspan', '8');
-                td.className = 'text-center text-muted py-4';
-                td.innerHTML = '<i class="fa-solid fa-user-xmark me-2"></i>Nenhum médico encontrado.';
-                tr.appendChild(td);
-                tbody.appendChild(tr);
-            }
-            var el = document.getElementById('contadorRegistros');
-            if (el) el.textContent = total + ' registro(s) encontrado(s)';
-        }
     </script>
 </body>
 </html>
