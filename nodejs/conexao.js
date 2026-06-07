@@ -1,11 +1,11 @@
 var mysql = require('mysql2');
 
 var conexao = mysql.createConnection({
-    host: 'mysql',
-    port: 3306,
+    host: 'localhost',
+    port: 3307,
     user: 'root',
-    password: 'root123',
-    database: 'mediagenda'
+    password: '',
+    database: 'labdbprog2'
 });
 
 conexao.connect(function(erro){

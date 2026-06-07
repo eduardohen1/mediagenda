@@ -8,6 +8,55 @@ document.addEventListener('DOMContentLoaded', function() {
     pesquisarAgendamentos();
 });
 
+function salvarAgendamento(){
+    var id = document.getElementById('agendamentoId').value;
+
+    var agendamento = {
+        paciente:         document.getElementById('paciente').value,
+        medico_id:        document.getElementById('medico_id').value,
+        especialidade_id: document.getElementById('especialidade_id').value,
+        data:             document.getElementById('data').value,
+        horario:          document.getElementById('horario').value,
+        status:           document.getElementById('status').value
+    };
+    var url = '/api/agendamentos';
+    var metodo = 'POST';
+    //verificar se é uma atualização, caso for, ajusta as variáveis
+    if(id){
+        url = '/api/agendamentos/' +id;
+        metodo= 'PUT';
+    }
+    fetch(url, {
+      method: metodo,
+      headers: {
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(agendamento)
+    })
+    .then(function(response){
+        return response.json();
+    })
+    .then(function(data){
+        if(data.erro){
+            Swal.fire('Atenção', data.mensagem,'warning');
+            return;
+        }
+        modalAgendamento.hide();
+        Swal.fire({
+            icon: 'success',
+            title: 'Sucesso',
+            text: data.mensagem,
+            timer: 1800,
+            showConfirmButton: false
+        });
+        carregarConsultas();
+    })
+    .catch(function(){
+        Swal.fire('Erro', 'Erro ao salvar agendamento','error');
+    });
+
+}
+
 function abrirNovoAgendamento() {
 
     document.getElementById('tituloModal').innerText = 'Novo Agendamento';

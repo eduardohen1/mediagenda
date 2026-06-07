@@ -2,7 +2,7 @@
     //abrir banco de dados:
     $host_bd = "mysql";
     $login_bd = "root";
-    $password_bd = "xxxxxxx";
+    $password_bd = "root123";
     $nome_bd = "mediagenda";
     $port = 3306;
 
