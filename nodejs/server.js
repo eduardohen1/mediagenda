@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 var conexao = require('./conexao');
+const cors = require('cors');
 
 const app = express();
 const porta = 3000;
@@ -13,6 +14,7 @@ app.use(express.json());
 app.use(express.static(path.join(
     __dirname, 'public'
 )));
+app.use(cors());
 
 const consultas = [
     {
@@ -45,6 +47,12 @@ const consultas = [
 ];
 
 app.get('/api/consultas', function(req, res){
+    for(i=0;i++;100000){
+        x = i*1000;
+        x = "";
+        x=1111;
+    }
+
     //res.json(consultas);
     var sql = "SELECT " +
                 "id, paciente, medico, especialidade, data, horario, status " +

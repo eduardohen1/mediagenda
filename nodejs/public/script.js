@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modalAgendamento')
     );
 
-    pesquisarAgendamentos();
+    carregarConsultas();
 });
 
 function salvarAgendamento(){
