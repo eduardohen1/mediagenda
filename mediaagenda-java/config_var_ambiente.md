@@ -12,5 +12,6 @@ javac -version
 
 ## Rodando aplicação java
 `
-.\apache-maven-3.9.16-bin\bin\\mvn spring-boot:run -X
+.\apache-maven-3.9.16-bin\bin\mvn clean install -X
+.\apache-maven-3.9.16-bin\bin\mvn spring-boot:run -X
 `

@@ -1,18 +1,36 @@
 package br.com.mediagenda.model;
 
+import javax.persistence.*;
+
+@Entity
+@Table(name = "medicos")
 public class Medico{
     //Argumentos
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)    
     private Long id;
+
     private String nome;
     private String crm;
+    
+    @Column(name="especialidade_id")
     private Long especialidadeId;
+
+    private String email;
     //Construtor
     public Medico(){}
-    public Medico(Long id, String nome, String crm, Long especialidadeId){
+    public Medico(Long id, String nome, String crm, Long especialidadeId, String email){
         this.id = id;
         this.nome = nome;
         this.crm = crm;
         this.especialidadeId = especialidadeId;
+        this.email = email;
+    }
+    public String getEmail(){
+        return this.email;
+    }
+    public void setEmail(String email){
+        this.email = email;
     }
 
     public Long getId(){

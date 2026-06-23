@@ -7,8 +7,21 @@
     <i class="fas fa-sync-alt mr-1"></i>
     Atualizar
   </button>
+  <div class="navbar-nav">
+    <a class="nav-item nav-link" routerLink="/agendamentos">
+      <i class="fas fa-calendar-check mr-1"></i>
+      Agendamentos
+    </a>
+    <a class="nav-item nav-link" routerLink="/medicos">
+      <i class="fas fa-user-md mr-1"></i>
+      Médicos
+    </a>
+  </div>
 </nav>
-
+<div class="container-fluid mt-4">
+  <router-outlet></router-outlet>
+</div>
+<!--
 <div class="container-fluid mt-4">
   <div class="jumbotron bg-white shadow-sm">
     <h1 class="display-4">
@@ -16,7 +29,7 @@
       Bem-vindo ao MediAgenda
     </h1>
     <p class="lead">Front-end em Angular consumindo uma API em NodeJS</p>
-  </div>
+  </div>  
   <div class="row mb-4">
     <div class="col-md-3 mb-3">
       <div class="card text-white bg-primary shadow-sm">
@@ -68,11 +81,11 @@
       </div>
     </div>
     
-    <!-- Cadastras outras situações -->
+    !-- Cadastras outras situações --
   </div>
-  <!-- o *ngIf faz a logica da variável do app.component.ts chama carregando
+  !-- o *ngIf faz a logica da variável do app.component.ts chama carregando
     onde exibe o div somente se ela for TRUE
-  -->
+  --
   <div class="alert alert-info" *ngIf="carregando">
     <i class="fas fa-spinner fa-spin mr-2"></i>
     Carregando...
@@ -138,3 +151,4 @@
   </div>
 
 </div>
+-->
