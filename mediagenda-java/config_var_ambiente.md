@@ -15,3 +15,13 @@ javac -version
 .\apache-maven-3.9.16-bin\bin\mvn clean install -X
 .\apache-maven-3.9.16-bin\bin\mvn spring-boot:run -X
 `
+
+## Instalando o Angular
+`
+npm install -g @angular/cli@8.3.29
+`
+
+## Rodando app Angular:
+`
+ng serve
+`

@@ -12,7 +12,7 @@ export class MedicoService {
   constructor(private http: HttpClient) { }
 
   listar(): Observable<any[]>{
-    return this.http.get<any[]>(this.apiURL);
+    return this.http.get<any[]>(this.apiURL+'/listar_todos');
   }
 
 }

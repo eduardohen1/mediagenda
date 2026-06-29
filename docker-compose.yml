@@ -33,13 +33,35 @@ services:
       - ./nodejs:/app
       - /app/node_modules
     working_dir: /app
+    environment:
+      DB_HOST: mysql
     depends_on:
       - mysql
     networks:
       - mediagenda_net
     stdin_open: true
     tty: true
-  
+
+  # =====================================================
+  # Angular 8 (ng serve - desenvolvimento)
+  # =====================================================
+  angular:
+    build:
+      context: .
+      dockerfile: Dockerfile.angular
+    container_name: mediagenda_angular
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./mediaagenda-angular:/app
+      - /app/node_modules
+    working_dir: /app
+    networks:
+      - mediagenda_net
+    stdin_open: true
+    tty: true
+
   # =====================================================
   # MySQL 8
   # =====================================================
